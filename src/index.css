@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-brand-cream text-brand-charcoal font-sans;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-charcoal text-white px-8 py-3 text-sm font-medium tracking-wider uppercase
+           transition-all duration-300 hover:bg-brand-blush hover:text-brand-charcoal
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent text-brand-charcoal border-2 border-brand-charcoal px-8 py-3
+           text-sm font-medium tracking-wider uppercase transition-all duration-300
+           hover:bg-brand-charcoal hover:text-white active:scale-95;
+  }
+
+  .section-heading {
+    @apply font-display text-3xl md:text-4xl lg:text-5xl text-brand-charcoal font-semibold;
+  }
+
+  .product-card {
+    @apply relative overflow-hidden bg-white rounded-lg shadow-sm
+           transition-shadow duration-300 hover:shadow-lg cursor-pointer;
+  }
+
+  .badge {
+    @apply absolute top-3 right-3 z-10 px-3 py-1 text-xs font-semibold rounded-full uppercase;
+  }
+
+  .badge-new {
+    @apply bg-brand-blush text-brand-charcoal;
+  }
+
+  .badge-sale {
+    @apply bg-red-400 text-white;
+  }
+
+  .badge-bestseller {
+    @apply bg-yellow-400 text-brand-charcoal;
+  }
+
+  .input-base {
+    @apply w-full px-4 py-3 border border-gray-200 rounded-lg font-sans
+           focus:outline-none focus:border-brand-charcoal focus:ring-2 focus:ring-brand-blush focus:ring-opacity-20
+           transition-all duration-200;
+  }
+}
+
+body {
+  transition: background-color 0.3s ease;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b0b0b0;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8c8c8c;
+}
