@@ -17,6 +17,11 @@ const authApi = {
   getProfile: () => {
     return axiosClient.get('/auth/profile');
   },
+
+  // Đăng xuất
+  logout: () => {
+    return axiosClient.post('/auth/logout');
+  },
 };
 
 export default authApi;

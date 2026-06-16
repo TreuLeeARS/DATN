@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import authApi from '../../api/authApi'
 
 // Auth buttons: account icon (mobile/compact) + Sign In / Sign Up links (desktop)
 export const AuthButtons = () => {
@@ -15,13 +16,21 @@ export const AuthButtons = () => {
     }
   }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('username')
-    setIsLoggedIn(false)
-    setUsername('')
-    window.location.reload() // Tải lại trang để cập nhật trạng thái xác thực toàn ứng dụng
+  const handleLogout = async () => {
+    try {
+      // Gọi API logout lên backend để thu hồi/xóa Refresh Token trong database
+      await authApi.logout()
+    } catch (error) {
+      console.error('Lỗi khi gọi API logout:', error)
+    } finally {
+      // Xóa sạch thông tin ở Client và tải lại trang
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+      localStorage.removeItem('username')
+      setIsLoggedIn(false)
+      setUsername('')
+      window.location.reload() // Tải lại trang để cập nhật trạng thái xác thực toàn ứng dụng
+    }
   }
 
   if (isLoggedIn) {
