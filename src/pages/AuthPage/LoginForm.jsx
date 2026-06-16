@@ -81,7 +81,16 @@ export const LoginForm = ({ onSwitchTab }) => {
       
     } catch (error) {
       console.error('Lỗi đăng nhập:', error)
-      const message = error.response?.data?.message || error.message || 'Đăng nhập thất bại. Sai tên đăng nhập hoặc mật khẩu!'
+      let message = 'Đăng nhập thất bại. Vui lòng thử lại!'
+      if (error.response?.data?.message) {
+        message = error.response.data.message
+      } else if (error.message === 'Network Error') {
+        message = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc máy chủ BE!'
+      } else if (error.message && error.message.includes('timeout')) {
+        message = 'Kết nối quá hạn. Vui lòng kiểm tra lại đường truyền!'
+      } else if (error.message) {
+        message = error.message
+      }
       setApiError(message)
     } finally {
       setIsSubmitting(false)

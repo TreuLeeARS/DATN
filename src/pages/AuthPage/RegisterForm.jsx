@@ -215,7 +215,16 @@ export const RegisterForm = ({ onSwitchTab }) => {
 
     } catch (error) {
       console.error('Lỗi đăng ký:', error)
-      const message = error.response?.data?.message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin!'
+      let message = 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin!'
+      if (error.response?.data?.message) {
+        message = error.response.data.message
+      } else if (error.message === 'Network Error') {
+        message = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc máy chủ BE!'
+      } else if (error.message && error.message.includes('timeout')) {
+        message = 'Kết nối quá hạn. Vui lòng kiểm tra lại đường truyền!'
+      } else if (error.message) {
+        message = error.message
+      }
       setApiError(message)
     } finally {
       setIsSubmitting(false)
