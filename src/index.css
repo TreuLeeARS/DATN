@@ -83,3 +83,95 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #8c8c8c;
 }
+
+/* ═══════════════════════════════════════════
+   Auth Page — Floating Label Input System
+   ═══════════════════════════════════════════ */
+
+/* Floating label — default position (inside input) */
+.floating-label {
+  position: absolute;
+  left: 0;
+  top: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #8C8C8C;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  transform-origin: left top;
+}
+
+/* Floating label — active position (above input) */
+.floating-input:focus ~ .floating-label,
+.floating-input:not(:placeholder-shown) ~ .floating-label {
+  top: -1.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #2C2C2C;
+}
+
+/* Floating input — focus border color */
+.floating-input:focus {
+  border-color: #2C2C2C;
+}
+
+/* Animated underline — grows from center on focus */
+.floating-line {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background-color: #2C2C2C;
+  transform: translateX(-50%);
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.floating-input:focus ~ .floating-line {
+  width: 100%;
+}
+
+/* Error message slide-up animation */
+@keyframes authSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: authSlideUp 0.25s ease-out;
+}
+
+/* Submit button shimmer effect on hover */
+.auth-submit-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-submit-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  transition: none;
+}
+
+.auth-submit-btn:hover::after {
+  left: 100%;
+  transition: left 0.6s ease;
+}
+
