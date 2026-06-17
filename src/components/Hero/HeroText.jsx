@@ -1,3 +1,5 @@
+import { showAuthToast } from '../../utils/authToast.jsx'
+
 export const HeroText = ({ headline, subline, ctaLabel, ctaHref, headlineRef, sublineRef, ctaRef }) => {
   // Split headline into words for animation
   const words = headline.split(' ')
@@ -31,6 +33,13 @@ export const HeroText = ({ headline, subline, ctaLabel, ctaHref, headlineRef, su
         <a
           ref={ctaRef}
           href={ctaHref}
+          onClick={(e) => {
+            const token = localStorage.getItem('accessToken')
+            if (!token) {
+              e.preventDefault()
+              showAuthToast('Đăng nhập để xem các sản phẩm và mua sắm.')
+            }
+          }}
           className="btn-primary inline-block"
         >
           {ctaLabel}

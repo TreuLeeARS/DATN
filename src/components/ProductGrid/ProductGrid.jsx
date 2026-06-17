@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import toast from 'react-hot-toast'
+import { showAuthToast } from '../../utils/authToast.jsx'
 import { ProductCard } from './ProductCard.jsx'
 import { useCartContext } from '../../context/CartContext.jsx'
 import { products } from '../../data/products.js'
@@ -47,8 +49,23 @@ export const ProductGrid = () => {
   }, [])
 
   const handleAddToCart = (product) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      showAuthToast('Đăng nhập để thêm sản phẩm vào giỏ hàng.')
+      return
+    }
     addItem(product, 1)
-    // Optionally add toast notification here
+    toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
+  }
+
+  const handleBuyNow = (product) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      showAuthToast('Đăng nhập để tiến hành mua sắm ngay.')
+      return
+    }
+    addItem(product, 1)
+    toast.success(`Đã thêm "${product.name}" vào giỏ hàng! Tiến hành thanh toán...`)
   }
 
   return (
@@ -78,15 +95,26 @@ export const ProductGrid = () => {
               key={product.id}
               product={product}
               onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
             />
           ))}
         </div>
 
         {/* View All CTA */}
         <div className="text-center mt-12 md:mt-16">
-          <a href="#" className="btn-secondary">
+          <button
+            onClick={() => {
+              const token = localStorage.getItem('accessToken')
+              if (!token) {
+                showAuthToast('Đăng nhập để tìm hiểu thêm và xem tất cả sản phẩm.')
+              } else {
+                toast('Tính năng xem tất cả sản phẩm đang được phát triển!', { icon: '✨' })
+              }
+            }}
+            className="btn-secondary"
+          >
             Xem Tất Cả Sản Phẩm
-          </a>
+          </button>
         </div>
       </div>
     </section>

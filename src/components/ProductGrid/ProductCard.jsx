@@ -12,7 +12,7 @@ const categoryLabels = {
   outerwear: 'Áo Khoác',
 }
 
-export const ProductCard = ({ product, onAddToCart }) => {
+export const ProductCard = ({ product, onAddToCart, onBuyNow }) => {
   const cardRef = useRef(null)
   const imageRef = useRef(null)
   const overlayRef = useRef(null)
@@ -81,16 +81,25 @@ export const ProductCard = ({ product, onAddToCart }) => {
         {/* Badge */}
         <ProductBadge type={product.badge} />
 
-        {/* Add to Cart Button */}
-        <button
-          onClick={() => onAddToCart(product)}
-          className="absolute bottom-0 left-0 right-0 bg-white text-brand-charcoal
-                     py-3 font-medium uppercase tracking-wider text-sm
+        {/* Action Buttons Container */}
+        <div
+          className="absolute bottom-0 left-0 right-0 flex z-10
                      transform translate-y-full group-hover:translate-y-0
                      transition-transform duration-300 opacity-0 group-hover:opacity-100"
         >
-          Thêm Vào Giỏ
-        </button>
+          <button
+            onClick={() => onAddToCart(product)}
+            className="flex-1 bg-white text-brand-charcoal py-3 font-semibold uppercase tracking-wider text-xs border-r border-gray-100 hover:bg-gray-50 transition-colors"
+          >
+            Thêm Giỏ
+          </button>
+          <button
+            onClick={() => onBuyNow(product)}
+            className="flex-1 bg-brand-charcoal text-white py-3 font-semibold uppercase tracking-wider text-xs hover:bg-brand-dark transition-colors"
+          >
+            Mua Ngay
+          </button>
+        </div>
       </div>
 
       {/* Product Info */}

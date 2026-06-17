@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import toast from 'react-hot-toast'
+import { showAuthToast } from '../../utils/authToast.jsx'
 import { RecommendationCard } from './RecommendationCard.jsx'
 import { useCartContext } from '../../context/CartContext.jsx'
 import { getMockRecommendations } from '../../data/aiResponses.js'
@@ -70,7 +72,23 @@ export const AIRecommendations = ({ userId = null }) => {
   }, [recommendations, userId])
 
   const handleAddToCart = (product) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      showAuthToast('Đăng nhập để thêm sản phẩm vào giỏ hàng.')
+      return
+    }
     addItem(product, 1)
+    toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
+  }
+
+  const handleBuyNow = (product) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      showAuthToast('Đăng nhập để tiến hành mua sắm ngay.')
+      return
+    }
+    addItem(product, 1)
+    toast.success(`Đã thêm "${product.name}" vào giỏ hàng! Tiến hành thanh toán...`)
   }
 
   return (
@@ -109,6 +127,7 @@ export const AIRecommendations = ({ userId = null }) => {
                   product={product}
                   reason={product.reason}
                   onAddToCart={handleAddToCart}
+                  onBuyNow={handleBuyNow}
                 />
               </div>
             ))}
@@ -121,9 +140,19 @@ export const AIRecommendations = ({ userId = null }) => {
             <p className="text-brand-muted mb-4">
               Muốn khám phá thêm? Trợ lý AI của chúng tôi sẽ giúp bạn tìm ra món đồ hoàn hảo.
             </p>
-            <a href="#" className="btn-secondary">
+            <button
+              onClick={() => {
+                const token = localStorage.getItem('accessToken')
+                if (!token) {
+                  showAuthToast('Đăng nhập để xem thêm gợi ý từ AI.')
+                } else {
+                  toast('Tính năng xem thêm gợi ý đang được phát triển!', { icon: '✨' })
+                }
+              }}
+              className="btn-secondary"
+            >
               Xem Thêm Gợi Ý
-            </a>
+            </button>
           </div>
         )}
       </div>
