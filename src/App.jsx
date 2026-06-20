@@ -7,7 +7,7 @@ import { AIRecommendations } from './components/AIRecommendations/index.js'
 
 import { Footer } from './components/Footer/index.js'
 import { CartProvider } from './context/CartContext.jsx'
-import { AuthPage } from './pages/AuthPage/index.js'
+import { AuthPage, ResetPasswordPage } from './pages/AuthPage/index.js'
 
 function App() {
   return (
@@ -33,6 +33,9 @@ function App() {
 
         {/* Auth Page (Login / Register) */}
         <Route path="/auth" element={<AuthPage />} />
+
+        {/* Reset Password Page */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
     </CartProvider>
   )

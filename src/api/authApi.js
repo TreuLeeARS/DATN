@@ -22,6 +22,21 @@ const authApi = {
   logout: () => {
     return axiosClient.post('/auth/logout');
   },
+
+  // Gửi lại email kích hoạt
+  resendActivation: (email) => {
+    return axiosClient.post('/auth/resend-activation', null, { params: { email } });
+  },
+
+  // Gửi email khôi phục mật khẩu
+  sendEmailResetPassword: (payload) => {
+    return axiosClient.post('/auth/send-email-for-reset-password', payload);
+  },
+
+  // Đặt lại mật khẩu mới
+  resetPassword: (payload) => {
+    return axiosClient.put('/auth/forgot-password', payload);
+  },
 };
 
 export default authApi;

@@ -195,7 +195,7 @@ export const RegisterForm = ({ onSwitchTab }) => {
       
       const response = await authApi.register(payload)
       
-      setApiSuccess(response.message || 'Đăng ký tài khoản thành công! Đang chuyển hướng sang Đăng nhập...')
+      setApiSuccess('Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.')
       
       // Reset form sau khi đăng ký thành công
       setForm({
@@ -208,10 +208,10 @@ export const RegisterForm = ({ onSwitchTab }) => {
         agreeTerms: false,
       })
 
-      // Tự động chuyển qua tab Đăng nhập sau 2 giây
+      // Tự động chuyển qua tab Đăng nhập sau 4 giây
       setTimeout(() => {
         onSwitchTab()
-      }, 2000)
+      }, 4000)
 
     } catch (error) {
       console.error('Lỗi đăng ký:', error)

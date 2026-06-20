@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { SocialLogin } from './SocialLogin.jsx'
 import authApi from '../../api/authApi'
 
@@ -16,12 +17,15 @@ const EyeOffIcon = () => (
   </svg>
 )
 
-export const LoginForm = ({ onSwitchTab }) => {
+export const LoginForm = ({ onSwitchTab, onForgotPassword }) => {
   const [form, setForm] = useState({ username: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState('')
+  const [unverifiedEmail, setUnverifiedEmail] = useState('')
+  const [isResending, setIsResending] = useState(false)
+  const [resendStatus, setResendStatus] = useState('') // 'idle' | 'success' | 'error'
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -29,6 +33,9 @@ export const LoginForm = ({ onSwitchTab }) => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
+    setApiError('')
+    setUnverifiedEmail('')
+    setResendStatus('')
   }
 
   const validate = () => {
@@ -47,12 +54,31 @@ export const LoginForm = ({ onSwitchTab }) => {
     return Object.keys(newErrors).length === 0
   }
 
+  const handleResendActivation = async () => {
+    if (!unverifiedEmail) return
+    setIsResending(true)
+    setResendStatus('')
+    try {
+      await authApi.resendActivation(unverifiedEmail)
+      setResendStatus('success')
+      toast.success('Gửi lại email kích hoạt thành công! Vui lòng kiểm tra hộp thư của bạn.')
+    } catch (err) {
+      console.error('Lỗi gửi lại email kích hoạt:', err)
+      setResendStatus('error')
+      toast.error(err.response?.data?.message || 'Gửi lại email kích hoạt thất bại. Vui lòng thử lại!')
+    } finally {
+      setIsResending(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) return
 
     setIsSubmitting(true)
     setApiError('')
+    setUnverifiedEmail('')
+    setResendStatus('')
 
     try {
       const response = await authApi.login({
@@ -60,9 +86,18 @@ export const LoginForm = ({ onSwitchTab }) => {
         password: form.password,
       })
 
-      // Kiểm tra nếu Backend trả về lỗi (do Backend trả về HTTP 200 OK kể cả khi sai mật khẩu)
+      // Backend trả về HTTP 200 với success=false và errorCode=ACCOUNT_NOT_ACTIVATED nếu chưa kích hoạt
+      if (response && response.success === false) {
+        if (response.errorCode === 'ACCOUNT_NOT_ACTIVATED') {
+          setUnverifiedEmail(response.meta?.email || '')
+          setApiError('Tài khoản của bạn chưa được kích hoạt. Vui lòng kiểm tra email.')
+          return
+        }
+        throw new Error(response.message || 'Sai tên đăng nhập hoặc mật khẩu!')
+      }
+
       if (!response || !response.data || !response.data.accessToken) {
-        throw new Error(response?.message || 'Sai tên đăng nhập hoặc mật khẩu!')
+        throw new Error('Sai tên đăng nhập hoặc mật khẩu!')
       }
 
       // Backend trả về BaseResponse<AuthResponse> -> data: { accessToken, refreshToken }
@@ -76,14 +111,19 @@ export const LoginForm = ({ onSwitchTab }) => {
       }
 
       console.log('Đăng nhập thành công:', response)
-      // Tự động chuyển hướng hoặc refresh page
-      window.location.href = '/' // Hoặc dùng useNavigate() nếu có router context
+      window.location.href = '/'
       
     } catch (error) {
       console.error('Lỗi đăng nhập:', error)
       let message = 'Đăng nhập thất bại. Vui lòng thử lại!'
-      if (error.response?.data?.message) {
-        message = error.response.data.message
+      if (error.response?.data) {
+        const errorData = error.response.data
+        if (errorData.errorCode === 'ACCOUNT_NOT_ACTIVATED') {
+          setUnverifiedEmail(errorData.meta?.email || '')
+          setApiError('Tài khoản của bạn chưa được kích hoạt. Vui lòng kiểm tra email.')
+          return
+        }
+        message = errorData.message || message
       } else if (error.message === 'Network Error') {
         message = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc máy chủ BE!'
       } else if (error.message && error.message.includes('timeout')) {
@@ -101,9 +141,56 @@ export const LoginForm = ({ onSwitchTab }) => {
     <form onSubmit={handleSubmit} noValidate>
       {/* Thông báo lỗi từ API */}
       {apiError && (
-        <div className="mb-6 text-sm text-red-500 font-medium p-3 bg-red-50 rounded-lg border border-red-200 animate-slide-up">
-          {apiError}
-        </div>
+        unverifiedEmail ? (
+          <div className="mb-6 text-sm p-4 rounded-xl border border-amber-200/80 bg-amber-50/50 animate-slide-up">
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 bg-amber-100 border border-amber-200 rounded-lg text-amber-700 mt-0.5 flex-shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-amber-900 text-sm leading-snug">
+                  {apiError}
+                </p>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={handleResendActivation}
+                    disabled={isResending}
+                    className="inline-flex items-center justify-center px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white bg-brand-charcoal hover:bg-brand-blush hover:text-brand-charcoal transition-all duration-300 rounded-lg shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isResending ? (
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3.5" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Đang gửi lại...
+                      </span>
+                    ) : (
+                      'Gửi lại email kích hoạt'
+                    )}
+                  </button>
+                  {resendStatus === 'success' && (
+                    <p className="text-green-600 text-xs mt-2 font-medium">
+                      ✓ Đã gửi lại email kích hoạt thành công!
+                    </p>
+                  )}
+                  {resendStatus === 'error' && (
+                    <p className="text-red-500 text-xs mt-2 font-medium">
+                      ✗ Gửi lại email kích hoạt thất bại. Thử lại sau!
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 text-sm text-red-500 font-medium p-3 bg-red-50 rounded-lg border border-red-200 animate-slide-up">
+            {apiError}
+          </div>
+        )
       )}
       {/* ─── Username ─── */}
       <div className="auth-form-field relative mb-8">
@@ -159,13 +246,14 @@ export const LoginForm = ({ onSwitchTab }) => {
 
       {/* ─── Forgot Password ─── */}
       <div className="auth-form-field text-right mb-8">
-        <a
-          href="#"
+        <button
+          type="button"
+          onClick={onForgotPassword}
           className="text-sm text-brand-muted hover:text-brand-charcoal transition-colors duration-200
-                     border-b border-transparent hover:border-brand-charcoal"
+                     border-b border-transparent hover:border-brand-charcoal cursor-pointer"
         >
           Quên mật khẩu?
-        </a>
+        </button>
       </div>
 
       {/* ─── Submit Button ─── */}

@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { AuthVisual } from './AuthVisual.jsx'
 import { LoginForm } from './LoginForm.jsx'
 import { RegisterForm } from './RegisterForm.jsx'
+import { ForgotPasswordForm } from './ForgotPasswordForm.jsx'
 
 // ─── Greeting config per tab ───
 const greetings = {
@@ -14,6 +15,10 @@ const greetings = {
   register: {
     title: 'Tạo Tài Khoản Mới',
     subtitle: 'Đăng ký để khám phá thế giới thời trang cá nhân hóa',
+  },
+  forgot: {
+    title: 'Khôi Phục Mật Khẩu',
+    subtitle: 'Nhập thông tin tài khoản để nhận email đặt lại mật khẩu',
   },
 }
 
@@ -79,14 +84,16 @@ export const AuthPage = () => {
     if (tab === activeTab || isAnimating.current) return
     isAnimating.current = true
 
-    const isGoingRight = tab === 'register'
+    const isGoingRight = tab === 'register' || tab === 'forgot'
 
     // 1. Animate tab indicator with GSAP
-    gsap.to(tabIndicatorRef.current, {
-      left: isGoingRight ? '50%' : '0%',
-      duration: 0.35,
-      ease: 'power2.inOut',
-    })
+    if (tabIndicatorRef.current && tab !== 'forgot' && activeTab !== 'forgot') {
+      gsap.to(tabIndicatorRef.current, {
+        left: isGoingRight ? '50%' : '0%',
+        duration: 0.35,
+        ease: 'power2.inOut',
+      })
+    }
 
     // 2. Fade out current content
     const tl = gsap.timeline()
@@ -182,42 +189,46 @@ export const AuthPage = () => {
             </div>
 
             {/* ─── Tab Switcher ─── */}
-            <div className="relative flex mb-10">
-              <button
-                className={`auth-tab-btn flex-1 pb-4 text-base font-display font-semibold
-                           transition-colors duration-200
-                           ${activeTab === 'login' ? 'text-brand-charcoal' : 'text-brand-muted hover:text-brand-charcoal/60'}`}
-                onClick={() => switchTab('login')}
-              >
-                Đăng Nhập
-              </button>
-              <button
-                className={`auth-tab-btn flex-1 pb-4 text-base font-display font-semibold
-                           transition-colors duration-200
-                           ${activeTab === 'register' ? 'text-brand-charcoal' : 'text-brand-muted hover:text-brand-charcoal/60'}`}
-                onClick={() => switchTab('register')}
-              >
-                Đăng Ký
-              </button>
+            {activeTab !== 'forgot' && (
+              <div className="relative flex mb-10">
+                <button
+                  className={`auth-tab-btn flex-1 pb-4 text-base font-display font-semibold
+                             transition-colors duration-200
+                             ${activeTab === 'login' ? 'text-brand-charcoal' : 'text-brand-muted hover:text-brand-charcoal/60'}`}
+                  onClick={() => switchTab('login')}
+                >
+                  Đăng Nhập
+                </button>
+                <button
+                  className={`auth-tab-btn flex-1 pb-4 text-base font-display font-semibold
+                             transition-colors duration-200
+                             ${activeTab === 'register' ? 'text-brand-charcoal' : 'text-brand-muted hover:text-brand-charcoal/60'}`}
+                  onClick={() => switchTab('register')}
+                >
+                  Đăng Ký
+                </button>
 
-              {/* Animated tab indicator (GSAP controlled) */}
-              <div className="absolute bottom-0 left-0 w-full h-px bg-gray-200" />
-              <div
-                ref={tabIndicatorRef}
-                className="absolute bottom-0 h-0.5 bg-brand-charcoal"
-                style={{
-                  left: activeTab === 'login' ? '0%' : '50%',
-                  width: '50%',
-                }}
-              />
-            </div>
+                {/* Animated tab indicator (GSAP controlled) */}
+                <div className="absolute bottom-0 left-0 w-full h-px bg-gray-200" />
+                <div
+                  ref={tabIndicatorRef}
+                  className="absolute bottom-0 h-0.5 bg-brand-charcoal"
+                  style={{
+                    left: activeTab === 'login' ? '0%' : '50%',
+                    width: '50%',
+                  }}
+                />
+              </div>
+            )}
 
             {/* ─── Form Content ─── */}
             <div ref={formWrapperRef}>
               {activeTab === 'login' ? (
-                <LoginForm onSwitchTab={() => switchTab('register')} />
-              ) : (
+                <LoginForm onSwitchTab={() => switchTab('register')} onForgotPassword={() => switchTab('forgot')} />
+              ) : activeTab === 'register' ? (
                 <RegisterForm onSwitchTab={() => switchTab('login')} />
+              ) : (
+                <ForgotPasswordForm onSwitchTab={() => switchTab('login')} />
               )}
             </div>
 
