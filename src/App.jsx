@@ -8,6 +8,8 @@ import { AIRecommendations } from './components/AIRecommendations/index.js'
 import { Footer } from './components/Footer/index.js'
 import { CartProvider } from './context/CartContext.jsx'
 import { AuthPage, ResetPasswordPage } from './pages/AuthPage/index.js'
+import { ShopPage } from './pages/ShopPage/index.js'
+import { CartPage } from './pages/CartPage/index.js'
 
 function App() {
   return (
@@ -36,6 +38,12 @@ function App() {
 
         {/* Reset Password Page */}
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+        {/* Shop Page */}
+        <Route path="/shop" element={<ShopPage />} />
+
+        {/* Cart / Checkout Page */}
+        <Route path="/cart" element={<CartPage />} />
       </Routes>
     </CartProvider>
   )

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import toast from 'react-hot-toast'
@@ -12,6 +13,7 @@ gsap.registerPlugin(ScrollTrigger)
 
 export const ProductGrid = () => {
   const { addItem } = useCartContext()
+  const navigate = useNavigate()
   const gridRef = useRef(null)
   const titleRef = useRef(null)
 
@@ -65,7 +67,7 @@ export const ProductGrid = () => {
       return
     }
     addItem(product, 1)
-    toast.success(`Đã thêm "${product.name}" vào giỏ hàng! Tiến hành thanh toán...`)
+    navigate('/cart')
   }
 
   return (
@@ -103,14 +105,7 @@ export const ProductGrid = () => {
         {/* View All CTA */}
         <div className="text-center mt-12 md:mt-16">
           <button
-            onClick={() => {
-              const token = localStorage.getItem('accessToken')
-              if (!token) {
-                showAuthToast('Đăng nhập để tìm hiểu thêm và xem tất cả sản phẩm.')
-              } else {
-                toast('Tính năng xem tất cả sản phẩm đang được phát triển!', { icon: '✨' })
-              }
-            }}
+            onClick={() => navigate('/shop')}
             className="btn-secondary"
           >
             Xem Tất Cả Sản Phẩm

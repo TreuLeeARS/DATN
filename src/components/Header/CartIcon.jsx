@@ -1,11 +1,13 @@
+import { Link } from 'react-router-dom'
 import { useCartContext } from '../../context/CartContext.jsx'
 
 export const CartIcon = () => {
   const { count } = useCartContext()
 
   return (
-    <button
-      className="relative p-2 hover:text-brand-blush transition-colors"
+    <Link
+      to="/cart"
+      className="relative p-2 hover:text-brand-blush transition-colors block"
       aria-label="Shopping cart"
     >
       <svg
@@ -27,6 +29,6 @@ export const CartIcon = () => {
           {count}
         </span>
       )}
-    </button>
+    </Link>
   )
 }

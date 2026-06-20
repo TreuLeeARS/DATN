@@ -1,9 +1,10 @@
 export const navLinks = [
-  { label: 'Hàng Mới', href: '#new-arrivals' },
-  { label: 'Bộ Sưu Tập', href: '#collections' },
-  { label: 'Khuyến Mãi', href: '#sale' },
-  { label: 'Giới Thiệu', href: '#about' },
-  { label: 'Liên Hệ', href: '#contact' },
+  { label: 'Cửa Hàng', href: '/shop' },
+  { label: 'Hàng Mới', href: '/#new-arrivals' },
+  { label: 'Bộ Sưu Tập', href: '/#collections' },
+  { label: 'Khuyến Mãi', href: '/#sale' },
+  { label: 'Giới Thiệu', href: '/#about' },
+  { label: 'Liên Hệ', href: '/#contact' },
 ]
 
 export const socialLinks = [
