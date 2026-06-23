@@ -10,9 +10,9 @@ export const ProductBadge = ({ type }) => {
   }
 
   const labelMap = {
-    new: 'New',
-    sale: 'Sale',
-    bestseller: 'Bestseller',
+    new: 'Mới',
+    sale: 'Giảm Giá',
+    bestseller: 'Bán Chạy',
   }
 
   return (

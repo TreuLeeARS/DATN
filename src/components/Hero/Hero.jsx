@@ -96,7 +96,7 @@ export const Hero = () => {
           {/* Hero Image */}
           <div className="hidden md:block">
             <HeroImage
-              src="https://picsum.photos/600/700?random=hero"
+              src="https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?q=80&w=800&auto=format&fit=crop"
               alt="Ảnh bìa"
               imageRef={imageRef}
             />

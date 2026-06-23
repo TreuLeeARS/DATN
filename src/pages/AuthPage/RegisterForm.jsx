@@ -193,7 +193,7 @@ export const RegisterForm = ({ onSwitchTab }) => {
         password: form.password,
       }
       
-      const response = await authApi.register(payload)
+      await authApi.register(payload)
       
       setApiSuccess('Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.')
       

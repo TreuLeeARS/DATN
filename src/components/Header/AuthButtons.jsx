@@ -1,20 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import authApi from '../../api/authApi'
 
 // Auth buttons: account icon (mobile/compact) + Sign In / Sign Up links (desktop)
 export const AuthButtons = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [username, setUsername] = useState('')
-
-  useEffect(() => {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
     const token = localStorage.getItem('accessToken')
     const storedUsername = localStorage.getItem('username')
-    if (token && storedUsername) {
-      setIsLoggedIn(true)
-      setUsername(storedUsername)
-    }
-  }, [])
+    return !!(token && storedUsername)
+  })
+  const [username, setUsername] = useState(() => {
+    return localStorage.getItem('username') || ''
+  })
 
   const handleLogout = async () => {
     try {
@@ -27,6 +24,11 @@ export const AuthButtons = () => {
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('username')
+      
+      // Reset trạng thái popup ưu đãi để người dùng có thể nhận lại quà tặng khi là khách vãng lai
+      localStorage.removeItem('shopPromptDismissedUntil')
+      sessionStorage.removeItem('appliedPromoCode')
+
       setIsLoggedIn(false)
       setUsername('')
       window.location.reload() // Tải lại trang để cập nhật trạng thái xác thực toàn ứng dụng
@@ -39,7 +41,7 @@ export const AuthButtons = () => {
         {/* Desktop user greeting */}
         <div className="hidden sm:flex items-center space-x-3 text-sm">
           <span className="font-semibold text-brand-charcoal">
-            Hi, <span className="text-brand-blush">{username}</span>
+            Xin chào, <span className="text-brand-blush">{username}</span>
           </span>
           <span className="text-brand-muted">/</span>
           <button

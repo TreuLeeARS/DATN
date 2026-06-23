@@ -111,7 +111,7 @@ export const LoginForm = ({ onSwitchTab, onForgotPassword }) => {
       }
 
       console.log('Đăng nhập thành công:', response)
-      window.location.href = '/'
+      window.location.href = '/shop'
       
     } catch (error) {
       console.error('Lỗi đăng nhập:', error)

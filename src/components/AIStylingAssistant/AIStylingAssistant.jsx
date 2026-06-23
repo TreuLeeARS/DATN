@@ -18,7 +18,6 @@ export const AIStylingAssistant = () => {
   } = useAIChat()
 
   const panelRef = useRef(null)
-  const animationRef = useRef(null)
 
   useLayoutEffect(() => {
     if (!panelRef.current) return

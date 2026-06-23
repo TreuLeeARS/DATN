@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { Header } from './components/Header/index.js'
 import { Hero } from './components/Hero/index.js'
@@ -10,8 +11,27 @@ import { CartProvider } from './context/CartContext.jsx'
 import { AuthPage, ResetPasswordPage } from './pages/AuthPage/index.js'
 import { ShopPage } from './pages/ShopPage/index.js'
 import { CartPage } from './pages/CartPage/index.js'
+import { ShopPromptModal } from './components/ShopPromptModal/ShopPromptModal.jsx'
 
 function App() {
+  const location = useLocation()
+
+  useEffect(() => {
+    // Kiểm tra xem có yêu cầu cuộn trang nào được lưu trữ không
+    const targetHash = sessionStorage.getItem('scrollTarget')
+    if (targetHash && location.pathname === '/') {
+      sessionStorage.removeItem('scrollTarget')
+      // Đợi DOM render xong rồi mới thực hiện cuộn
+      const timer = setTimeout(() => {
+        const element = document.getElementById(targetHash)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [location.pathname])
+
   return (
     <CartProvider>
       <Toaster position="top-right" reverseOrder={false} />
@@ -23,12 +43,18 @@ function App() {
             <>
               <Header />
               <main>
-                <Hero />
-                <ProductGrid />
-                <AIRecommendations />
+                <div id="home"><Hero /></div>
+                <div id="collections">
+                  <div id="sale">
+                    <ProductGrid />
+                  </div>
+                </div>
+                <div id="new-arrivals">
+                  <AIRecommendations />
+                </div>
               </main>
               <Footer />
-
+              <ShopPromptModal />
             </>
           }
         />

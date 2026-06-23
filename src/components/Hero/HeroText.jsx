@@ -33,13 +33,6 @@ export const HeroText = ({ headline, subline, ctaLabel, ctaHref, headlineRef, su
         <a
           ref={ctaRef}
           href={ctaHref}
-          onClick={(e) => {
-            const token = localStorage.getItem('accessToken')
-            if (!token) {
-              e.preventDefault()
-              showAuthToast('Đăng nhập để xem các sản phẩm và mua sắm.')
-            }
-          }}
           className="btn-primary inline-block"
         >
           {ctaLabel}

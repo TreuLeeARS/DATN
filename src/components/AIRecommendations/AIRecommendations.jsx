@@ -10,7 +10,7 @@ import { duration, ease } from '../../utils/gsapDefaults.js'
 
 gsap.registerPlugin(ScrollTrigger)
 
-export const AIRecommendations = ({ userId = null }) => {
+export const AIRecommendations = () => {
   const [recommendations, setRecommendations] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const { addItem } = useCartContext()
@@ -44,7 +44,7 @@ export const AIRecommendations = ({ userId = null }) => {
             // Simulate API call delay
             setIsLoading(true)
             setTimeout(() => {
-              setRecommendations(getMockRecommendations(userId))
+              setRecommendations(getMockRecommendations())
               setIsLoading(false)
             }, 600)
           }
@@ -69,7 +69,7 @@ export const AIRecommendations = ({ userId = null }) => {
     }, containerRef)
 
     return () => ctx.revert()
-  }, [recommendations, userId])
+  }, [recommendations])
 
   const handleAddToCart = (product) => {
     const token = localStorage.getItem('accessToken')

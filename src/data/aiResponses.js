@@ -61,10 +61,10 @@ export const getResponse = (userInput) => {
   return matched || intentMap[intentMap.length - 1]
 }
 
-export const getMockRecommendations = (userId = null) => {
+export const getMockRecommendations = () => {
   // Ở Phase 2, hàm này sẽ gọi API cá nhân hóa thật
   // Hiện tại trả về 4 sản phẩm cố định kèm lý do gợi ý
-  const recommendedIndices = [0, 3, 6, 11]
+  const recommendedIndices = [0, 12, 13, 20]
   return recommendedIndices.map(idx => ({
     ...products[idx],
     reason: getReasonForProduct(idx),
@@ -73,9 +73,9 @@ export const getMockRecommendations = (userId = null) => {
 
 const reasonBank = {
   0: 'Dựa trên sở thích vải lanh của bạn',
-  3: 'Đang thịnh hành trong size của bạn',
-  6: 'Phù hợp với các món bạn đã xem',
-  11: 'Bán chạy nhất mùa này',
+  12: 'Sản phẩm lụa cao cấp đề xuất riêng',
+  13: 'Đang thịnh hành trong size của bạn',
+  20: 'Áo khoác blazer bán chạy nhất',
 }
 
 const getReasonForProduct = (idx) => {

@@ -31,11 +31,12 @@ export const Footer = () => {
 
   return (
     <footer
+      id="contact"
       ref={footerRef}
       className="bg-brand-dark text-gray-300 py-16 md:py-20"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+        <div id="about" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand Column */}
           <div>
             <h3 className="text-2xl font-display font-bold text-white mb-4">

@@ -62,7 +62,7 @@ export const ShopPage = () => {
 
     // 3. Color
     if (selectedColor) {
-      result = result.filter(p => p.colors.includes(selectedColor))
+      result = result.filter(p => p.colors.some(c => c.hex === selectedColor))
     }
 
     // 4. Size
@@ -424,13 +424,13 @@ export const ShopPage = () => {
                               {product.description || 'Chất liệu vải cao cấp mang lại cảm giác thoải mái tối ưu.'}
                             </p>
 
-                            {/* Colors */}
+                              {/* Colors */}
                             <div className="flex gap-2 mb-4">
                               {product.colors.map((color, i) => (
                                 <div
                                   key={i}
                                   className="w-3.5 h-3.5 rounded-full border border-gray-300"
-                                  style={{ backgroundColor: color }}
+                                  style={{ backgroundColor: color.hex }}
                                 />
                               ))}
                             </div>

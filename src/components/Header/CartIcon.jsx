@@ -1,12 +1,22 @@
 import { Link } from 'react-router-dom'
 import { useCartContext } from '../../context/CartContext.jsx'
+import { showAuthToast } from '../../utils/authToast.jsx'
 
 export const CartIcon = () => {
   const { count } = useCartContext()
 
+  const handleCartClick = (e) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      e.preventDefault()
+      showAuthToast('Đăng nhập để xem giỏ hàng và thanh toán.')
+    }
+  }
+
   return (
     <Link
       to="/cart"
+      onClick={handleCartClick}
       className="relative p-2 hover:text-brand-blush transition-colors block"
       aria-label="Shopping cart"
     >

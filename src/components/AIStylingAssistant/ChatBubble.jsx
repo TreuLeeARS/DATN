@@ -3,7 +3,6 @@ import gsap from 'gsap'
 
 export const ChatBubble = ({ isOpen, onClick, unreadCount = 0 }) => {
   const bubbleRef = useRef(null)
-  const pulseRef = useRef(null)
 
   useLayoutEffect(() => {
     if (!isOpen && bubbleRef.current) {

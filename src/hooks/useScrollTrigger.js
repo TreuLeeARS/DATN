@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react'
 import gsap from 'gsap'
-import { duration, ease, scrollTriggerDefaults } from '../utils/gsapDefaults.js'
+import { duration, ease } from '../utils/gsapDefaults.js'
 
 // Reusable hook factory for common scroll trigger animations
 export const useScrollTrigger = (ref, options = {}) => {

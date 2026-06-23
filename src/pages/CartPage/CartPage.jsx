@@ -1,5 +1,5 @@
-import { useState, useLayoutEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useLayoutEffect, useRef, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import toast from 'react-hot-toast'
 import { Header } from '../../components/Header/Header.jsx'
@@ -7,7 +7,17 @@ import { Footer } from '../../components/Footer/Footer.jsx'
 import { useCartContext } from '../../context/CartContext.jsx'
 
 export const CartPage = () => {
+  const navigate = useNavigate()
   const { cartItems, removeItem, updateQuantity, clearCart, total } = useCartContext()
+
+  // Kiểm tra đăng nhập, nếu chưa đăng nhập thì đẩy về trang đăng nhập
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      toast.error('Vui lòng đăng nhập để xem giỏ hàng và thực hiện thanh toán.')
+      navigate('/auth', { replace: true })
+    }
+  }, [navigate])
 
   // State thông tin nhận hàng
   const [form, setForm] = useState({
@@ -66,9 +76,13 @@ export const CartPage = () => {
     return Object.keys(newErrors).length === 0
   }
 
+  // Đọc mã giảm giá đã áp dụng từ sessionStorage
+  const appliedPromo = sessionStorage.getItem('appliedPromoCode')
+  const discountAmount = appliedPromo === 'PEESTART15' ? Math.round(total * 0.15) : 0
+
   // Tính toán phí vận chuyển (Free ship cho đơn hàng >= 1 triệu VND, ngược lại phí ship là 30k)
   const shippingFee = total >= 1000000 ? 0 : 30000
-  const finalTotal = total + shippingFee
+  const finalTotal = Math.max(0, total - discountAmount + shippingFee)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -90,6 +104,7 @@ export const CartPage = () => {
         paymentMethod: form.paymentMethod,
         items: [...cartItems],
         subtotal: total,
+        discount: discountAmount,
         shippingFee,
         total: finalTotal,
         date: new Date().toLocaleDateString('vi-VN'),
@@ -357,7 +372,17 @@ export const CartPage = () => {
                           <h4 className="font-display text-sm font-bold text-brand-charcoal truncate">
                             {item.name}
                           </h4>
-                          <p className="text-xs text-brand-muted mt-0.5">Size S | Màu ngẫu nhiên</p>
+                          <p className="text-xs text-brand-muted mt-0.5 flex items-center gap-1.5">
+                            Size {item.selectedSize || 'Chưa chọn'}
+                            <span className="text-gray-300">|</span>
+                            {item.selectedColorHex && (
+                              <span
+                                className="inline-block w-3 h-3 rounded-full border border-gray-300 flex-shrink-0"
+                                style={{ backgroundColor: item.selectedColorHex }}
+                              />
+                            )}
+                            {item.selectedColor || 'Chưa chọn màu'}
+                          </p>
                           
                           {/* Price and controls */}
                           <div className="flex items-center justify-between mt-2">
@@ -410,6 +435,14 @@ export const CartPage = () => {
                       <span>Tạm tính:</span>
                       <span className="font-semibold text-brand-charcoal">{(total / 1000).toFixed(0)}kđ</span>
                     </div>
+
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-green-600 font-medium">
+                        <span>Giảm giá (PEESTART15 - 15%):</span>
+                        <span>-{(discountAmount / 1000).toFixed(0)}kđ</span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between text-brand-muted">
                       <span>Phí vận chuyển:</span>
                       <span className="font-semibold text-brand-charcoal">
