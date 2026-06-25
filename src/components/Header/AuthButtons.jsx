@@ -29,6 +29,9 @@ export const AuthButtons = () => {
       localStorage.removeItem('shopPromptDismissedUntil')
       sessionStorage.removeItem('appliedPromoCode')
 
+      // Xóa giỏ hàng của tài khoản cũ khi đăng xuất
+      localStorage.removeItem('pee_cart_items')
+
       setIsLoggedIn(false)
       setUsername('')
       window.location.reload() // Tải lại trang để cập nhật trạng thái xác thực toàn ứng dụng

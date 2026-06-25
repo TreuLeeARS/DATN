@@ -3,7 +3,20 @@ import toast from 'react-hot-toast'
 
 // Custom hook for managing shopping cart state
 export const useCart = () => {
-  const [cartItems, setCartItems] = useState([])
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pee_cart_items')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      console.error('Lỗi đọc giỏ hàng từ localStorage:', e)
+      return []
+    }
+  })
+
+  // Đồng bộ giỏ hàng với localStorage mỗi khi thay đổi
+  useEffect(() => {
+    localStorage.setItem('pee_cart_items', JSON.stringify(cartItems))
+  }, [cartItems])
 
   const addItem = useCallback((product, quantity = 1) => {
     setCartItems(prev => {
@@ -28,7 +41,22 @@ export const useCart = () => {
     if (token && pendingStr) {
       try {
         const { product, action } = JSON.parse(pendingStr)
-        addItem(product, 1)
+        
+        // Thêm sản phẩm trực tiếp và đồng bộ ngay lập tức với localStorage để tránh race condition khi reload
+        setCartItems(prev => {
+          const existing = prev.find(item => item.id === product.id)
+          let newItems
+          if (existing) {
+            newItems = prev.map(item =>
+              item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+            )
+          } else {
+            newItems = [...prev, { ...product, quantity: 1 }]
+          }
+          localStorage.setItem('pee_cart_items', JSON.stringify(newItems))
+          return newItems
+        })
+
         toast.success(`Đã tự động thêm "${product.name}" (Size ${product.selectedSize || 'S'} | ${product.selectedColor || 'Màu mặc định'}) vào giỏ hàng!`, {
           duration: 5000,
           icon: '🛍️'
@@ -44,7 +72,7 @@ export const useCart = () => {
         console.error('Lỗi khôi phục sản phẩm mua dở:', e)
       }
     }
-  }, [addItem])
+  }, [])
 
   const removeItem = useCallback((productId) => {
     setCartItems(prev => prev.filter(item => item.id !== productId))
