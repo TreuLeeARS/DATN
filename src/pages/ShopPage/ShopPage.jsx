@@ -207,73 +207,54 @@ export const ShopPage = () => {
         const productCategoryLower = p.category.toLowerCase().normalize('NFC')
         const productNameLower = p.name.toLowerCase().normalize('NFC')
         
-        // 1. So khớp trực tiếp danh mục gốc (Áo -> tops, Quần -> bottoms, etc.)
-        const isDirectMatch = (
-          productCategoryLower === targetCategoryStr ||
-          (targetCategoryStr === 'áo' && productCategoryLower === 'tops') ||
-          (targetCategoryStr === 'quần' && productCategoryLower === 'bottoms') ||
-          (targetCategoryStr === 'váy & đầm' && productCategoryLower === 'dresses') ||
-          (targetCategoryStr === 'đầm' && productCategoryLower === 'dresses') ||
-          (targetCategoryStr === 'set đồ' && productCategoryLower === 'sets') ||
-          (targetCategoryStr === 'áo khoác' && productCategoryLower === 'outerwear') ||
-          (targetCategoryStr === 'giày' && productCategoryLower === 'shoes') ||
-          (targetCategoryStr === 'túi xách' && productCategoryLower === 'bags') ||
-          (targetCategoryStr === 'phụ kiện' && productCategoryLower === 'accessories')
-        )
-        
-        if (isDirectMatch) return true
-        
-        // 2. Kiểm tra xem có phải là danh mục con (ví dụ: 'áo sơ mi') của một danh mục cha
-        let parentNameLower = null
-        if (typeof selectedCategory === 'object' && selectedCategory.parentCategory) {
-          parentNameLower = selectedCategory.parentCategory.name.toLowerCase().normalize('NFC')
-        } else {
-          // Đoán cha của danh mục con dựa trên từ khóa nếu selectedCategory là string
-          if (targetCategoryStr.startsWith('áo khoác')) parentNameLower = 'áo khoác'
-          else if (targetCategoryStr.startsWith('áo ')) parentNameLower = 'áo'
-          else if (targetCategoryStr.startsWith('quần ') || targetCategoryStr === 'chân váy') parentNameLower = 'quần'
-          else if (targetCategoryStr.startsWith('đầm ')) parentNameLower = 'váy & đầm'
-          else if (targetCategoryStr.startsWith('set ')) parentNameLower = 'set đồ'
-          else if (targetCategoryStr.startsWith('giày ')) parentNameLower = 'giày'
-          else if (targetCategoryStr.startsWith('túi ')) parentNameLower = 'túi xách'
-        }
-        
-        if (parentNameLower) {
-          const isFromParent = (
-            (parentNameLower === 'áo' && productCategoryLower === 'tops') ||
-            (parentNameLower === 'quần' && productCategoryLower === 'bottoms') ||
-            (parentNameLower === 'váy & đầm' && productCategoryLower === 'dresses') ||
-            (parentNameLower === 'set đồ' && productCategoryLower === 'sets') ||
-            (parentNameLower === 'áo khoác' && productCategoryLower === 'outerwear') ||
-            (parentNameLower === 'giày' && productCategoryLower === 'shoes') ||
-            (parentNameLower === 'túi xách' && productCategoryLower === 'bags') ||
-            (parentNameLower === 'phụ kiện' && productCategoryLower === 'accessories')
-          )
-          
-          if (isFromParent) {
-            const keywords = extractKeywords(targetCategoryStr)
-            return keywords.some(k => productNameLower.includes(k) || p.tags.some(t => t.toLowerCase().normalize('NFC').includes(k)))
-          }
-        }
-        
-        // 3. Nếu selectedCategory là danh mục cha (object), hiển thị cả sản phẩm của các danh mục con của nó
-        if (typeof selectedCategory === 'object' && selectedCategory.subcategories) {
-          const subNames = selectedCategory.subcategories.map(s => s.name.toLowerCase().normalize('NFC'))
-          const matchesAnySub = subNames.some(subName => {
-            let keyword = subName
-            if (keyword.startsWith('áo ')) keyword = keyword.substring(3)
-            if (keyword.startsWith('quần ')) keyword = keyword.substring(5)
-            if (keyword.startsWith('đầm ')) keyword = keyword.substring(4)
-            if (keyword.startsWith('set ')) keyword = keyword.substring(4)
-            if (keyword.startsWith('giày ')) keyword = keyword.substring(5)
-            if (keyword.startsWith('túi ')) keyword = keyword.substring(4)
-            if (keyword.startsWith('balo ')) keyword = keyword.substring(5)
-            return productNameLower.includes(keyword) || p.tags.some(t => t.toLowerCase().normalize('NFC').includes(keyword))
-          })
-          if (matchesAnySub) return true
+        // 1. So khớp trực tiếp nhóm danh mục lớn / trung
+        const categoryMapping = {
+          'quần áo': ['tops', 'bottoms', 'dresses', 'sets', 'outerwear'],
+          'giày & túi': ['shoes', 'bags'],
+          'phụ kiện': ['accessories'],
+          'áo': ['tops'],
+          'quần': ['bottoms'],
+          'váy & đầm': ['dresses'],
+          'set đồ': ['sets'],
+          'áo khoác': ['outerwear'],
+          'giày': ['shoes'],
+          'túi xách': ['bags']
         }
 
-        return false
+        const mappedTarget = categoryMapping[targetCategoryStr]
+        if (mappedTarget) {
+          return mappedTarget.includes(productCategoryLower)
+        }
+
+        // 2. Nếu là danh mục con cấp thấp hơn (Ví dụ: "Áo sơ mi", "Trang sức", "Kính mắt",...)
+        let matchedBaseCategory = null
+        
+        if (targetCategoryStr.includes('áo thun') || targetCategoryStr.includes('áo sơ mi') || targetCategoryStr.includes('áo kiểu') || targetCategoryStr.includes('áo hai dây') || targetCategoryStr.includes('ba lỗ')) {
+          matchedBaseCategory = 'tops'
+        } else if (targetCategoryStr.includes('quần') || targetCategoryStr.includes('chân váy')) {
+          matchedBaseCategory = 'bottoms'
+        } else if (targetCategoryStr.includes('đầm')) {
+          matchedBaseCategory = 'dresses'
+        } else if (targetCategoryStr.includes('set')) {
+          matchedBaseCategory = 'sets'
+        } else if (targetCategoryStr.includes('blazer') || targetCategoryStr.includes('coat') || targetCategoryStr.includes('áo khoác') || targetCategoryStr.includes('cardigan')) {
+          matchedBaseCategory = 'outerwear'
+        } else if (targetCategoryStr.includes('giày') || targetCategoryStr.includes('sandal') || targetCategoryStr.includes('sneaker') || targetCategoryStr.includes('búp bê')) {
+          matchedBaseCategory = 'shoes'
+        } else if (targetCategoryStr.includes('túi') || targetCategoryStr.includes('balo')) {
+          matchedBaseCategory = 'bags'
+        } else {
+          // Mặc định các danh mục thuộc Phụ kiện khác (như trang sức, kính mắt, thắt lưng, mũ & nón...)
+          matchedBaseCategory = 'accessories'
+        }
+
+        if (productCategoryLower !== matchedBaseCategory) {
+          return false
+        }
+
+        // Khớp từ khóa trong tên hoặc tags
+        const keywords = extractKeywords(targetCategoryStr)
+        return keywords.some(k => productNameLower.includes(k) || p.tags.some(t => t.toLowerCase().normalize('NFC').includes(k)))
       })
     }
 
