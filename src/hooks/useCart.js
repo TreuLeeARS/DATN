@@ -63,10 +63,13 @@ export const useCart = () => {
         })
         sessionStorage.removeItem('pendingPurchase')
 
-        if (action === 'buy' && window.location.pathname !== '/cart') {
-          setTimeout(() => {
-            window.location.href = '/cart'
-          }, 600)
+        if (action === 'buy') {
+          sessionStorage.setItem('checkoutOnlyProductId', product.id)
+          if (window.location.pathname !== '/cart') {
+            setTimeout(() => {
+              window.location.href = '/cart'
+            }, 600)
+          }
         }
       } catch (e) {
         console.error('Lỗi khôi phục sản phẩm mua dở:', e)

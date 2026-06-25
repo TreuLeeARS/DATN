@@ -94,6 +94,7 @@ export const AIRecommendations = () => {
       return
     }
     addItem(product, 1)
+    sessionStorage.setItem('checkoutOnlyProductId', product.id)
     navigate('/cart')
   }
 

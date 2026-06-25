@@ -71,6 +71,7 @@ export const ProductGrid = () => {
       return
     }
     addItem(product, 1)
+    sessionStorage.setItem('checkoutOnlyProductId', product.id)
     navigate('/cart')
   }
 

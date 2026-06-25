@@ -125,6 +125,7 @@ export const ShopPage = () => {
       return
     }
     addItem(product, 1)
+    sessionStorage.setItem('checkoutOnlyProductId', product.id)
     navigate('/cart')
   }
 

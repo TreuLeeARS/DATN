@@ -10,6 +10,8 @@ export const CartPage = () => {
   const navigate = useNavigate()
   const { cartItems, removeItem, updateQuantity, clearCart, total } = useCartContext()
 
+  const [selectedItemIds, setSelectedItemIds] = useState([])
+
   // Kiểm tra đăng nhập, nếu chưa đăng nhập thì đẩy về trang đăng nhập
   useEffect(() => {
     const token = localStorage.getItem('accessToken')
@@ -19,6 +21,31 @@ export const CartPage = () => {
       navigate('/auth', { replace: true })
     }
   }, [navigate])
+
+  // Kiểm tra và khởi tạo sản phẩm được chọn thanh toán
+  useEffect(() => {
+    const checkoutOnlyId = sessionStorage.getItem('checkoutOnlyProductId')
+    if (checkoutOnlyId) {
+      // Chỉ tự động chọn nếu sản phẩm này đã xuất hiện trong giỏ hàng
+      const exists = cartItems.some(item => item.id === checkoutOnlyId)
+      if (exists) {
+        setSelectedItemIds([checkoutOnlyId])
+        sessionStorage.removeItem('checkoutOnlyProductId')
+      }
+    }
+  }, [cartItems])
+
+  const handleToggleSelectItem = (id) => {
+    setSelectedItemIds(prev =>
+      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+    )
+  }
+
+  const handleToggleSelectAll = () => {
+    setSelectedItemIds(prev =>
+      prev.length === cartItems.length ? [] : cartItems.map(item => item.id)
+    )
+  }
 
   // State thông tin nhận hàng
   const [form, setForm] = useState({
@@ -77,13 +104,16 @@ export const CartPage = () => {
     return Object.keys(newErrors).length === 0
   }
 
+  const selectedItems = cartItems.filter(item => selectedItemIds.includes(item.id))
+  const selectedTotal = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+
   // Đọc mã giảm giá đã áp dụng từ sessionStorage
   const appliedPromo = sessionStorage.getItem('appliedPromoCode')
-  const discountAmount = appliedPromo === 'PEESTART15' ? Math.round(total * 0.15) : 0
+  const discountAmount = appliedPromo === 'PEESTART15' ? Math.round(selectedTotal * 0.15) : 0
 
   // Tính toán phí vận chuyển (Free ship cho đơn hàng >= 1 triệu VND, ngược lại phí ship là 30k)
-  const shippingFee = total >= 1000000 ? 0 : 30000
-  const finalTotal = Math.max(0, total - discountAmount + shippingFee)
+  const shippingFee = selectedTotal >= 1000000 ? 0 : 30000
+  const finalTotal = Math.max(0, selectedTotal - discountAmount + shippingFee)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -103,8 +133,8 @@ export const CartPage = () => {
         phone: form.phone,
         address: form.address,
         paymentMethod: form.paymentMethod,
-        items: [...cartItems],
-        subtotal: total,
+        items: [...selectedItems],
+        subtotal: selectedTotal,
         discount: discountAmount,
         shippingFee,
         total: finalTotal,
@@ -114,7 +144,9 @@ export const CartPage = () => {
       setOrderInfo(newOrder)
       setOrderSuccess(true)
       setIsSubmitting(false)
-      clearCart() // Làm trống giỏ hàng sau khi đặt hàng thành công
+      // Chỉ xóa các sản phẩm được thanh toán thành công khỏi giỏ hàng
+      selectedItemIds.forEach(id => removeItem(id))
+      setSelectedItemIds([])
       toast.success('Đặt đơn hàng thành công! Cảm ơn bạn.')
     }, 1500)
   }
@@ -221,149 +253,189 @@ export const CartPage = () => {
             /* Giỏ hàng có sản phẩm, hiển thị giao diện đặt hàng */
             <div className="flex flex-col lg:flex-row gap-8 items-start">
               
-              {/* ═══════════ LEFT COLUMN: SHIPPING FORM ═══════════ */}
-              <div className="w-full lg:w-3/5 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm cart-anim-item">
-                <h2 className="font-display text-2xl font-bold text-brand-charcoal mb-6 border-b border-gray-100 pb-4">
-                  Thông tin giao hàng
-                </h2>
+              {/* ═══════════ LEFT COLUMN: SHIPPING FORM OR PLACEHOLDER ═══════════ */}
+              {selectedItemIds.length > 0 ? (
+                <div className="w-full lg:w-3/5 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm cart-anim-item animate-fade-in">
+                  <h2 className="font-display text-2xl font-bold text-brand-charcoal mb-6 border-b border-gray-100 pb-4">
+                    Thông tin giao hàng
+                  </h2>
 
-                <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                  {/* Full Name */}
-                  <div>
-                    <label htmlFor="fullName" className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-2">
-                      Họ và tên người nhận
-                    </label>
-                    <input
-                      type="text"
-                      name="fullName"
-                      id="fullName"
-                      value={form.fullName}
-                      onChange={handleChange}
-                      placeholder="Nguyễn Văn A"
-                      className="input-base"
-                      disabled={isSubmitting}
-                    />
-                    {errors.fullName && (
-                      <p className="text-red-400 text-xs mt-2 animate-slide-up">{errors.fullName}</p>
-                    )}
-                  </div>
-
-                  {/* Phone */}
-                  <div>
-                    <label htmlFor="phone" className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-2">
-                      Số điện thoại nhận hàng
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      id="phone"
-                      value={form.phone}
-                      onChange={handleChange}
-                      placeholder="09XXXXXXXX"
-                      className="input-base"
-                      disabled={isSubmitting}
-                    />
-                    {errors.phone && (
-                      <p className="text-red-400 text-xs mt-2 animate-slide-up">{errors.phone}</p>
-                    )}
-                  </div>
-
-                  {/* Address */}
-                  <div>
-                    <label htmlFor="address" className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-2">
-                      Địa chỉ nhận hàng chi tiết
-                    </label>
-                    <textarea
-                      name="address"
-                      id="address"
-                      rows="3"
-                      value={form.address}
-                      onChange={handleChange}
-                      placeholder="Số nhà, Tên đường, Phường/Xã, Quận/Huyện, Tỉnh/Thành Phố..."
-                      className="input-base resize-none"
-                      disabled={isSubmitting}
-                    />
-                    {errors.address && (
-                      <p className="text-red-400 text-xs mt-2 animate-slide-up">{errors.address}</p>
-                    )}
-                  </div>
-
-                  {/* Payment Method Selector */}
-                  <div className="mt-4">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-3">
-                      Phương thức thanh toán
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      {/* COD option */}
-                      <label
-                        className={`flex-1 flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
-                          form.paymentMethod === 'cod'
-                            ? 'border-brand-charcoal bg-brand-cream/30 ring-1 ring-brand-charcoal'
-                            : 'border-gray-200 hover:border-brand-charcoal/50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="cod"
-                            checked={form.paymentMethod === 'cod'}
-                            onChange={handleChange}
-                            className="accent-brand-charcoal w-4 h-4"
-                            disabled={isSubmitting}
-                          />
-                          <div className="text-left">
-                            <p className="text-sm font-semibold text-brand-charcoal">Thanh toán khi nhận hàng (COD)</p>
-                            <p className="text-[11px] text-brand-muted">Trả tiền mặt khi sản phẩm được giao đến nơi</p>
-                          </div>
-                        </div>
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                    {/* Full Name */}
+                    <div>
+                      <label htmlFor="fullName" className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-2">
+                        Họ và tên người nhận
                       </label>
-
-                      {/* Bank option */}
-                      <label
-                        className={`flex-1 flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
-                          form.paymentMethod === 'bank'
-                            ? 'border-brand-charcoal bg-brand-cream/30 ring-1 ring-brand-charcoal'
-                            : 'border-gray-200 hover:border-brand-charcoal/50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="bank"
-                            checked={form.paymentMethod === 'bank'}
-                            onChange={handleChange}
-                            className="accent-brand-charcoal w-4 h-4"
-                            disabled={isSubmitting}
-                          />
-                          <div className="text-left">
-                            <p className="text-sm font-semibold text-brand-charcoal">Chuyển khoản ngân hàng</p>
-                            <p className="text-[11px] text-brand-muted">Hiển thị thông tin chuyển khoản sau đặt hàng</p>
-                          </div>
-                        </div>
-                      </label>
+                      <input
+                        type="text"
+                        name="fullName"
+                        id="fullName"
+                        value={form.fullName}
+                        onChange={handleChange}
+                        placeholder="Nguyễn Văn A"
+                        className="input-base"
+                        disabled={isSubmitting}
+                      />
+                      {errors.fullName && (
+                        <p className="text-red-400 text-xs mt-2 animate-slide-up">{errors.fullName}</p>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Submit checkout Form hidden trigger */}
-                  <input type="submit" id="checkout-form-submit" className="hidden" />
-                </form>
-              </div>
+                    {/* Phone */}
+                    <div>
+                      <label htmlFor="phone" className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-2">
+                        Số điện thoại nhận hàng
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        id="phone"
+                        value={form.phone}
+                        onChange={handleChange}
+                        placeholder="09XXXXXXXX"
+                        className="input-base"
+                        disabled={isSubmitting}
+                      />
+                      {errors.phone && (
+                        <p className="text-red-400 text-xs mt-2 animate-slide-up">{errors.phone}</p>
+                      )}
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                      <label htmlFor="address" className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-2">
+                        Địa chỉ nhận hàng chi tiết
+                      </label>
+                      <textarea
+                        name="address"
+                        id="address"
+                        rows="3"
+                        value={form.address}
+                        onChange={handleChange}
+                        placeholder="Số nhà, Tên đường, Phường/Xã, Quận/Huyện, Tỉnh/Thành Phố..."
+                        className="input-base resize-none"
+                        disabled={isSubmitting}
+                      />
+                      {errors.address && (
+                        <p className="text-red-400 text-xs mt-2 animate-slide-up">{errors.address}</p>
+                      )}
+                    </div>
+
+                    {/* Payment Method Selector */}
+                    <div className="mt-4">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-3">
+                        Phương thức thanh toán
+                      </label>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        {/* COD option */}
+                        <label
+                          className={`flex-1 flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
+                            form.paymentMethod === 'cod'
+                              ? 'border-brand-charcoal bg-brand-cream/30 ring-1 ring-brand-charcoal'
+                              : 'border-gray-200 hover:border-brand-charcoal/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name="paymentMethod"
+                              value="cod"
+                              checked={form.paymentMethod === 'cod'}
+                              onChange={handleChange}
+                              className="accent-brand-charcoal w-4 h-4"
+                              disabled={isSubmitting}
+                            />
+                            <div className="text-left">
+                              <p className="text-sm font-semibold text-brand-charcoal">Thanh toán khi nhận hàng (COD)</p>
+                              <p className="text-[11px] text-brand-muted">Trả tiền mặt khi sản phẩm được giao đến nơi</p>
+                            </div>
+                          </div>
+                        </label>
+
+                        {/* Bank option */}
+                        <label
+                          className={`flex-1 flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
+                            form.paymentMethod === 'bank'
+                              ? 'border-brand-charcoal bg-brand-cream/30 ring-1 ring-brand-charcoal'
+                              : 'border-gray-200 hover:border-brand-charcoal/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name="paymentMethod"
+                              value="bank"
+                              checked={form.paymentMethod === 'bank'}
+                              onChange={handleChange}
+                              className="accent-brand-charcoal w-4 h-4"
+                              disabled={isSubmitting}
+                            />
+                            <div className="text-left">
+                              <p className="text-sm font-semibold text-brand-charcoal">Chuyển khoản ngân hàng</p>
+                              <p className="text-[11px] text-brand-muted">Hiển thị thông tin chuyển khoản sau đặt hàng</p>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Submit checkout Form hidden trigger */}
+                    <input type="submit" id="checkout-form-submit" className="hidden" />
+                  </form>
+                </div>
+              ) : (
+                <div className="w-full lg:w-3/5 bg-white p-8 rounded-2xl border border-gray-100 shadow-sm text-center py-16 cart-anim-item flex flex-col items-center justify-center min-h-[350px] animate-fade-in">
+                  <div className="w-16 h-16 bg-brand-cream rounded-full flex items-center justify-center mb-5 text-brand-muted">
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-brand-charcoal mb-2">
+                    Chưa chọn sản phẩm thanh toán
+                  </h3>
+                  <p className="text-brand-muted text-sm max-w-sm leading-relaxed">
+                    Vui lòng tích chọn sản phẩm bạn muốn đặt mua ở danh sách bên cạnh để nhập thông tin giao hàng và thanh toán.
+                  </p>
+                </div>
+              )}
 
               {/* ═══════════ RIGHT COLUMN: CART ITEMS & SUMMARY ═══════════ */}
               <div className="w-full lg:w-2/5 flex flex-col gap-6 cart-anim-item">
                 
                 {/* Cart list summary card */}
                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <h3 className="font-display text-xl font-bold text-brand-charcoal mb-4 border-b border-gray-100 pb-3">
-                    Đơn hàng của bạn
-                  </h3>
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                    <h3 className="font-display text-xl font-bold text-brand-charcoal">
+                      Đơn hàng của bạn
+                    </h3>
+                    {cartItems.length > 0 && (
+                      <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-muted cursor-pointer hover:text-brand-charcoal transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedItemIds.length === cartItems.length}
+                          onChange={handleToggleSelectAll}
+                          className="accent-brand-charcoal w-3.5 h-3.5"
+                          disabled={isSubmitting}
+                        />
+                        Chọn tất cả
+                      </label>
+                    )}
+                  </div>
 
                   {/* Cart items list */}
                   <div className="max-h-[300px] overflow-y-auto pr-1 flex flex-col gap-4 mb-4">
                     {cartItems.map((item) => (
                       <div key={item.id} className="flex gap-4 items-center">
+                        {/* Selection Checkbox */}
+                        <input
+                          type="checkbox"
+                          checked={selectedItemIds.includes(item.id)}
+                          onChange={() => handleToggleSelectItem(item.id)}
+                          className="accent-brand-charcoal w-4.5 h-4.5 cursor-pointer rounded border-gray-300 flex-shrink-0"
+                          disabled={isSubmitting}
+                          aria-label={`Chọn sản phẩm ${item.name}`}
+                        />
+
                         <img
                           src={item.images[0]}
                           alt={item.name}
@@ -417,7 +489,10 @@ export const CartPage = () => {
                         {/* Remove button */}
                         <button
                           type="button"
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => {
+                            removeItem(item.id);
+                            setSelectedItemIds(prev => prev.filter(id => id !== item.id));
+                          }}
                           className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0 transition-colors"
                           disabled={isSubmitting}
                           title="Xóa sản phẩm"
@@ -434,7 +509,7 @@ export const CartPage = () => {
                   <div className="border-t border-gray-100 pt-4 flex flex-col gap-2.5 text-sm">
                     <div className="flex justify-between text-brand-muted">
                       <span>Tạm tính:</span>
-                      <span className="font-semibold text-brand-charcoal">{(total / 1000).toFixed(0)}kđ</span>
+                      <span className="font-semibold text-brand-charcoal">{(selectedTotal / 1000).toFixed(0)}kđ</span>
                     </div>
 
                     {discountAmount > 0 && (
@@ -447,32 +522,39 @@ export const CartPage = () => {
                     <div className="flex justify-between text-brand-muted">
                       <span>Phí vận chuyển:</span>
                       <span className="font-semibold text-brand-charcoal">
-                        {shippingFee === 0 ? 'Miễn phí' : `${(shippingFee / 1000).toFixed(0)}kđ`}
+                        {selectedItemIds.length === 0 ? '0kđ' : (shippingFee === 0 ? 'Miễn phí' : `${(shippingFee / 1000).toFixed(0)}kđ`)}
                       </span>
                     </div>
                     
-                    {shippingFee > 0 && (
+                    {shippingFee > 0 && selectedTotal > 0 && (
                       <p className="text-[10px] text-brand-muted italic text-left">
-                        * Mẹo: Mua thêm <span className="font-bold text-brand-charcoal">{((1000000 - total) / 1000).toFixed(0)}kđ</span> nữa để được miễn phí vận chuyển!
+                        * Mẹo: Mua thêm <span className="font-bold text-brand-charcoal">{((1000000 - selectedTotal) / 1000).toFixed(0)}kđ</span> nữa để được miễn phí vận chuyển!
                       </p>
                     )}
 
                     <div className="border-t border-gray-150 pt-3 flex justify-between font-bold text-base text-brand-charcoal">
                       <span>Tổng cộng:</span>
-                      <span>{(finalTotal / 1000).toFixed(0)}kđ</span>
+                      <span>{(selectedItemIds.length === 0 ? 0 : finalTotal / 1000).toFixed(0)}kđ</span>
                     </div>
                   </div>
 
                   {/* Submit checkout CTA button */}
                   <button
-                    onClick={() => document.getElementById('checkout-form-submit').click()}
-                    disabled={isSubmitting}
-                    className="auth-submit-btn w-full bg-brand-charcoal text-white py-4 rounded-lg
+                    onClick={() => {
+                      if (selectedItemIds.length === 0) {
+                        toast.error('Vui lòng chọn ít nhất một sản phẩm để thanh toán!')
+                        return
+                      }
+                      document.getElementById('checkout-form-submit').click()
+                    }}
+                    disabled={isSubmitting || selectedItemIds.length === 0}
+                    className={`auth-submit-btn w-full py-4 rounded-lg
                                font-semibold uppercase tracking-widest text-sm mt-6
                                transition-all duration-300
-                               hover:bg-brand-dark hover:shadow-xl hover:shadow-brand-charcoal/20
-                               active:scale-[0.98]
-                               disabled:opacity-60 disabled:cursor-not-allowed"
+                               ${selectedItemIds.length === 0 
+                                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                 : 'bg-brand-charcoal text-white hover:bg-brand-dark hover:shadow-xl hover:shadow-brand-charcoal/20 active:scale-[0.98]'}
+                               disabled:opacity-60`}
                   >
                     {isSubmitting ? (
                       <span className="flex items-center justify-center gap-3">
