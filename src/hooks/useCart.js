@@ -63,7 +63,7 @@ export const useCart = () => {
         })
         sessionStorage.removeItem('pendingPurchase')
 
-        if (action === 'buy') {
+        if (action === 'buy' && window.location.pathname !== '/cart') {
           setTimeout(() => {
             window.location.href = '/cart'
           }, 600)

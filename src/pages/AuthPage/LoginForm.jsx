@@ -111,7 +111,13 @@ export const LoginForm = ({ onSwitchTab, onForgotPassword }) => {
       }
 
       console.log('Đăng nhập thành công:', response)
-      window.location.href = '/shop'
+      const authRedirectUrl = sessionStorage.getItem('authRedirectUrl')
+      sessionStorage.removeItem('authRedirectUrl')
+      if (authRedirectUrl && authRedirectUrl !== '/auth' && authRedirectUrl !== '/reset-password') {
+        window.location.href = authRedirectUrl
+      } else {
+        window.location.href = '/shop'
+      }
       
     } catch (error) {
       console.error('Lỗi đăng nhập:', error)

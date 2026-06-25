@@ -54,6 +54,7 @@ export const ProductGrid = () => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
       sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'cart' }))
+      sessionStorage.setItem('authRedirectUrl', window.location.pathname + window.location.search)
       showAuthToast('Đăng nhập để thêm sản phẩm vào giỏ hàng.')
       return
     }
@@ -65,6 +66,7 @@ export const ProductGrid = () => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
       sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'buy' }))
+      sessionStorage.setItem('authRedirectUrl', '/cart')
       showAuthToast('Đăng nhập để tiến hành mua sắm ngay.')
       return
     }

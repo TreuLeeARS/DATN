@@ -9,6 +9,7 @@ export const CartIcon = () => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
       e.preventDefault()
+      sessionStorage.setItem('authRedirectUrl', '/cart')
       showAuthToast('Đăng nhập để xem giỏ hàng và thanh toán.')
     }
   }

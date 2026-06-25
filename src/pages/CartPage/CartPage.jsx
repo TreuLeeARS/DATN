@@ -15,6 +15,7 @@ export const CartPage = () => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
       toast.error('Vui lòng đăng nhập để xem giỏ hàng và thực hiện thanh toán.')
+      sessionStorage.setItem('authRedirectUrl', '/cart')
       navigate('/auth', { replace: true })
     }
   }, [navigate])

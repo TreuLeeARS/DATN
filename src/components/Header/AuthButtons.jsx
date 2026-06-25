@@ -13,6 +13,10 @@ export const AuthButtons = () => {
     return localStorage.getItem('username') || ''
   })
 
+  const handleAuthLinkClick = () => {
+    sessionStorage.setItem('authRedirectUrl', window.location.pathname + window.location.search)
+  }
+
   const handleLogout = async () => {
     try {
       // Gọi API logout lên backend để thu hồi/xóa Refresh Token trong database
@@ -92,6 +96,7 @@ export const AuthButtons = () => {
         <Link
           to="/auth"
           state={{ tab: 'login' }}
+          onClick={handleAuthLinkClick}
           className="font-medium tracking-wider uppercase hover:text-brand-blush transition-colors"
         >
           Đăng Nhập
@@ -100,6 +105,7 @@ export const AuthButtons = () => {
         <Link
           to="/auth"
           state={{ tab: 'register' }}
+          onClick={handleAuthLinkClick}
           className="font-medium tracking-wider uppercase hover:text-brand-blush transition-colors"
         >
           Đăng Ký
@@ -110,6 +116,7 @@ export const AuthButtons = () => {
       <Link
         to="/auth"
         state={{ tab: 'login' }}
+        onClick={handleAuthLinkClick}
         className="sm:hidden p-2 hover:text-brand-blush transition-colors"
         aria-label="Đăng nhập hoặc đăng ký"
       >
