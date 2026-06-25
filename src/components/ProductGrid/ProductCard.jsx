@@ -6,10 +6,14 @@ import { duration, ease } from '../../utils/gsapDefaults.js'
 
 // Nhãn danh mục tiếng Việt
 const categoryLabels = {
-  dresses: 'Đầm',
   tops: 'Áo',
-  bottoms: 'Quần & Chân Váy',
-  outerwear: 'Áo Khoác',
+  bottoms: 'Quần',
+  dresses: 'Váy & Đầm',
+  sets: 'Set đồ',
+  outerwear: 'Áo khoác',
+  shoes: 'Giày',
+  bags: 'Túi xách',
+  accessories: 'Phụ kiện',
 }
 
 export const ProductCard = ({ product, onAddToCart, onBuyNow }) => {

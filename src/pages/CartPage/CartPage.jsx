@@ -172,7 +172,7 @@ export const CartPage = () => {
                 Đặt Hàng Thành Công!
               </h2>
               <p className="text-brand-muted text-sm mb-6 leading-relaxed">
-                Cảm ơn bạn đã lựa chọn mua sắm tại <span className="font-semibold text-brand-charcoal">Pee!</span>. 
+                Cảm ơn bạn đã lựa chọn mua sắm tại <span className="font-semibold text-brand-charcoal">OUTTA</span>. 
                 Đơn hàng của bạn đã được ghi nhận và đang chờ xử lý giao nhận.
               </p>
 

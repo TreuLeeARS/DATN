@@ -70,7 +70,7 @@ export const Hero = () => {
   }, [])
 
   const headline = 'Khám Phá Phong Cách Của Bạn'
-  const subline = 'Thời trang nữ cao cấp tôn vinh cá tính riêng. Từ những chiếc đầm thanh lịch đến trang phục thường ngày thoải mái, Pee! luôn có lựa chọn cho mọi khoảnh khắc.'
+  const subline = 'Thời trang nữ cao cấp tôn vinh cá tính riêng. Từ những chiếc đầm thanh lịch đến trang phục thường ngày thoải mái, OUTTA luôn có lựa chọn cho mọi khoảnh khắc.'
   const ctaLabel = 'Mua Ngay'
   const ctaHref = '#products'
 

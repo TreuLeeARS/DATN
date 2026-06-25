@@ -4,7 +4,6 @@ import { NavLinks } from './NavLinks.jsx'
 import { CartIcon } from './CartIcon.jsx'
 import { AuthButtons } from './AuthButtons.jsx'
 import { cn } from '../../utils/cn.js'
-
 export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -15,8 +14,11 @@ export const Header = () => {
     }
 
     window.addEventListener('scroll', handleScroll)
+    
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  const displayLinks = navLinks
 
   return (
     <header
@@ -32,12 +34,12 @@ export const Header = () => {
           {/* Logo */}
           <div className="flex-shrink-0">
             <a href="/" className="text-2xl font-display font-bold text-brand-charcoal">
-              Pee!
+              OUTTA
             </a>
           </div>
 
           {/* Desktop Navigation */}
-          <NavLinks links={navLinks} mobile={false} />
+          <NavLinks links={displayLinks} mobile={false} />
 
           {/* Right Section */}
           <div className="flex items-center space-x-4">
@@ -77,7 +79,7 @@ export const Header = () => {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <NavLinks links={navLinks} mobile={true} />
+          <NavLinks links={displayLinks} mobile={true} />
         )}
       </div>
     </header>

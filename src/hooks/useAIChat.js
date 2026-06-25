@@ -57,7 +57,7 @@ export const useAIChat = () => {
           setMessages([{
             id: generateId(),
             role: 'assistant',
-            content: 'Xin chào! 👋 Chào mừng bạn đến với Pee! Tôi là Trợ Lý Phối Đồ AI. Hôm nay bạn đang tìm gì nào?',
+            content: 'Xin chào! 👋 Chào mừng bạn đến với OUTTA! Tôi là Trợ Lý Phối Đồ AI. Hôm nay bạn đang tìm gì nào?',
             timestamp: new Date(),
             suggestions: ['Hàng mới về', 'Sản phẩm khuyến mãi', 'Giúp tôi chọn'],
           }])

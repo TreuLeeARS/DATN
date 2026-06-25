@@ -1,10 +1,36 @@
 export const navLinks = [
-  { label: 'Cửa Hàng', href: '/shop' },
-  { label: 'Hàng Mới', href: '/#new-arrivals' },
-  { label: 'Bộ Sưu Tập', href: '/#collections' },
-  { label: 'Khuyến Mãi', href: '/#sale' },
-  { label: 'Giới Thiệu', href: '/#about' },
-  { label: 'Liên Hệ', href: '/#contact' },
+  { label: 'Trang chủ', href: '/' },
+  { label: 'Mới về', href: '/shop?filter=new' },
+  {
+    label: 'Quần áo',
+    href: '/shop',
+    sublinks: [
+      { label: 'Áo', href: '/shop?category=%C3%81o' },
+      { label: 'Quần', href: '/shop?category=Qu%E1%BA%A7n' },
+      { label: 'Váy & Đầm', href: '/shop?category=V%C3%A1y%20%26%20%C4%90%E1%BA%A7m' },
+      { label: 'Set đồ', href: '/shop?category=Set%20%C4%91%E1%BB%93' },
+      { label: 'Áo khoác', href: '/shop?category=%C3%81o%20kho%C3%A1c' },
+    ]
+  },
+  {
+    label: 'Giày & Túi',
+    href: '/shop',
+    sublinks: [
+      { label: 'Giày', href: '/shop?category=Gi%C3%A0y' },
+      { label: 'Túi xách', href: '/shop?category=T%C3%BAi%20x%C3%A1ch' },
+    ]
+  },
+  {
+    label: 'Phụ kiện',
+    href: '/shop?category=Ph%E1%BB%A5%20ki%E1%BB%87n',
+    sublinks: [
+      { label: 'Trang sức', href: '/shop?category=Trang%20s%E1%BB%A9c' },
+      { label: 'Kính mắt', href: '/shop?category=K%C3%ADnh%20m%E1%BA%AFt' },
+      { label: 'Thắt lưng', href: '/shop?category=Th%E1%BA%AFt%20l%C6%B0ng' },
+      { label: 'Mũ & Nón', href: '/shop?category=M%C5%A9%20%26%20N%C3%B3n' },
+    ]
+  },
+  { label: 'Sale', href: '/shop?filter=sale', isSale: true },
 ]
 
 export const socialLinks = [

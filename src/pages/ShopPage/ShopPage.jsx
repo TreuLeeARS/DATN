@@ -1,5 +1,5 @@
-import { useState, useLayoutEffect, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useLayoutEffect, useRef, useMemo, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import gsap from 'gsap'
 import toast from 'react-hot-toast'
 import { Header } from '../../components/Header/Header.jsx'
@@ -8,14 +8,20 @@ import { ProductCard } from '../../components/ProductGrid/ProductCard.jsx'
 import { useCartContext } from '../../context/CartContext.jsx'
 import { products } from '../../data/products.js'
 import { showAuthToast } from '../../utils/authToast.jsx'
+import categoryApi from '../../api/categoryApi.js'
+import { isAdmin } from '../../utils/auth.js'
 
 // Nhãn danh mục tiếng Việt
 const categoryLabels = {
   all: 'Tất Cả',
-  dresses: 'Đầm',
   tops: 'Áo',
-  bottoms: 'Quần & Chân Váy',
-  outerwear: 'Áo Khoác',
+  bottoms: 'Quần',
+  dresses: 'Váy & Đầm',
+  sets: 'Set đồ',
+  outerwear: 'Áo khoác',
+  shoes: 'Giày',
+  bags: 'Túi xách',
+  accessories: 'Phụ kiện',
 }
 
 // Danh sách mã màu thực tế sang tên tiếng Việt
@@ -28,20 +34,147 @@ const colorOptions = [
   { hex: '#5A4A42', label: 'Nâu Đậm' },
 ]
 
-const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '35', '36', '37', '38', '39', '40', 'OS']
+
+const brandOptions = ['SHEIN', 'ASOS', 'Yody', 'Routine', 'IVY Moda']
+const materialOptions = [
+  'Cotton',
+  'Lụa (Silk)',
+  'Lanh (Linen)',
+  'Dạ Tweed',
+  'Jeans/Denim',
+  'Voan (Chiffon)',
+  'Thun Gân',
+  'Da Thật',
+  'Da Tổng Hợp',
+]
+const occasionOptions = ['Đi chơi', 'Đi làm', 'Dự tiệc', 'Công sở']
+
+const extractKeywords = (catName) => {
+  const catNameLower = catName.toLowerCase().normalize('NFC');
+  let rawKeywords = [catNameLower];
+  if (catNameLower.includes('&')) {
+    rawKeywords = [...rawKeywords, ...catNameLower.split('&').map(k => k.trim())];
+  }
+  if (catNameLower.includes('(')) {
+    rawKeywords = [...rawKeywords, ...catNameLower.split(/[\(\)]/).map(k => k.trim()).filter(Boolean)];
+  }
+
+  const stopWords = ['áo', 'quần', 'váy', 'đầm', 'set', 'giày', 'túi', 'balo', 'khoác'];
+  
+  const keywords = [];
+  rawKeywords.forEach(kw => {
+    let words = kw.split(' ');
+    while (words.length > 0 && stopWords.includes(words[0])) {
+      words.shift();
+    }
+    const cleanKw = words.join(' ').trim();
+    if (cleanKw) {
+      keywords.push(cleanKw);
+      if (cleanKw.endsWith('s')) {
+        keywords.push(cleanKw.substring(0, cleanKw.length - 1));
+      }
+    }
+  });
+  
+  return [...new Set(keywords)];
+};
 
 export const ShopPage = () => {
   const { addItem } = useCartContext()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // State bộ lọc và sắp xếp
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedColor, setSelectedColor] = useState(null)
   const [selectedSize, setSelectedSize] = useState(null)
-  const [maxPrice, setMaxPrice] = useState(1500000)
+  const [maxPrice, setMaxPrice] = useState(2000000)
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+
+  // Bộ lọc mở rộng
+  const [selectedBrands, setSelectedBrands] = useState([])
+  const [selectedMaterials, setSelectedMaterials] = useState([])
+  const [selectedOccasions, setSelectedOccasions] = useState([])
+
+  const [dbCategories, setDbCategories] = useState([])
+
+  // Lấy danh mục từ BE khi component mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoryApi.getRootCategories()
+        if (response && response.data) {
+          const rootCates = response.data
+          // Lấy tiếp các danh mục con cho mỗi danh mục gốc
+          const fullCates = await Promise.all(
+            rootCates.map(async (cat) => {
+              try {
+                const subResponse = await categoryApi.getCategoriesByParent(cat.id)
+                const subs = subResponse && subResponse.data ? subResponse.data : []
+                const subcategoriesWithParent = subs.map(sub => ({
+                  ...sub,
+                  parentCategory: cat
+                }))
+                return {
+                  ...cat,
+                  subcategories: subcategoriesWithParent
+                }
+              } catch (err) {
+                return { ...cat, subcategories: [] }
+              }
+            })
+          )
+          setDbCategories(fullCates)
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải danh mục từ BE:', err)
+      }
+    }
+    fetchCategories()
+  }, [])
+
+  // Đồng bộ từ URL query params
+  useEffect(() => {
+    let categoryParam = searchParams.get('category')
+    const filterParam = searchParams.get('filter')
+
+    if (categoryParam) {
+      // Chuẩn hóa dấu cộng thành khoảng trắng
+      categoryParam = categoryParam.replace(/\+/g, ' ')
+      
+      if (dbCategories.length > 0) {
+        let found = null
+        // Tìm ở cấp root
+        found = dbCategories.find(cat => cat.name.toLowerCase().normalize('NFC') === categoryParam.toLowerCase().normalize('NFC'))
+        if (!found) {
+          // Tìm ở cấp sub
+          for (const root of dbCategories) {
+            const sub = root.subcategories?.find(s => s.name.toLowerCase().normalize('NFC') === categoryParam.toLowerCase().normalize('NFC'))
+            if (sub) {
+              found = sub
+              break
+            }
+          }
+        }
+        if (found) {
+          setSelectedCategory(found)
+        } else {
+          setSelectedCategory(categoryParam)
+        }
+      } else {
+        setSelectedCategory(categoryParam)
+      }
+    } else {
+      setSelectedCategory('all')
+    }
+
+    if (filterParam === 'new') {
+      setSortBy('newest')
+    }
+  }, [searchParams, dbCategories])
 
   const gridRef = useRef(null)
 
@@ -55,9 +188,93 @@ export const ShopPage = () => {
       result = result.filter(p => p.name.toLowerCase().includes(q))
     }
 
+    // 1.5. URL Filter (new / sale)
+    const filterParam = searchParams.get('filter')
+    if (filterParam === 'new') {
+      result = result.filter(p => p.badge === 'new')
+    } else if (filterParam === 'sale') {
+      result = result.filter(p => p.badge === 'sale' || (p.originalPrice && p.originalPrice > p.price))
+    }
+
     // 2. Category
     if (selectedCategory !== 'all') {
-      result = result.filter(p => p.category === selectedCategory)
+      const targetCategoryStr = (typeof selectedCategory === 'string' ? selectedCategory : selectedCategory.name)
+        .replace(/\+/g, ' ')
+        .toLowerCase()
+        .normalize('NFC')
+        
+      result = result.filter(p => {
+        const productCategoryLower = p.category.toLowerCase().normalize('NFC')
+        const productNameLower = p.name.toLowerCase().normalize('NFC')
+        
+        // 1. So khớp trực tiếp danh mục gốc (Áo -> tops, Quần -> bottoms, etc.)
+        const isDirectMatch = (
+          productCategoryLower === targetCategoryStr ||
+          (targetCategoryStr === 'áo' && productCategoryLower === 'tops') ||
+          (targetCategoryStr === 'quần' && productCategoryLower === 'bottoms') ||
+          (targetCategoryStr === 'váy & đầm' && productCategoryLower === 'dresses') ||
+          (targetCategoryStr === 'đầm' && productCategoryLower === 'dresses') ||
+          (targetCategoryStr === 'set đồ' && productCategoryLower === 'sets') ||
+          (targetCategoryStr === 'áo khoác' && productCategoryLower === 'outerwear') ||
+          (targetCategoryStr === 'giày' && productCategoryLower === 'shoes') ||
+          (targetCategoryStr === 'túi xách' && productCategoryLower === 'bags') ||
+          (targetCategoryStr === 'phụ kiện' && productCategoryLower === 'accessories')
+        )
+        
+        if (isDirectMatch) return true
+        
+        // 2. Kiểm tra xem có phải là danh mục con (ví dụ: 'áo sơ mi') của một danh mục cha
+        let parentNameLower = null
+        if (typeof selectedCategory === 'object' && selectedCategory.parentCategory) {
+          parentNameLower = selectedCategory.parentCategory.name.toLowerCase().normalize('NFC')
+        } else {
+          // Đoán cha của danh mục con dựa trên từ khóa nếu selectedCategory là string
+          if (targetCategoryStr.startsWith('áo khoác')) parentNameLower = 'áo khoác'
+          else if (targetCategoryStr.startsWith('áo ')) parentNameLower = 'áo'
+          else if (targetCategoryStr.startsWith('quần ') || targetCategoryStr === 'chân váy') parentNameLower = 'quần'
+          else if (targetCategoryStr.startsWith('đầm ')) parentNameLower = 'váy & đầm'
+          else if (targetCategoryStr.startsWith('set ')) parentNameLower = 'set đồ'
+          else if (targetCategoryStr.startsWith('giày ')) parentNameLower = 'giày'
+          else if (targetCategoryStr.startsWith('túi ')) parentNameLower = 'túi xách'
+        }
+        
+        if (parentNameLower) {
+          const isFromParent = (
+            (parentNameLower === 'áo' && productCategoryLower === 'tops') ||
+            (parentNameLower === 'quần' && productCategoryLower === 'bottoms') ||
+            (parentNameLower === 'váy & đầm' && productCategoryLower === 'dresses') ||
+            (parentNameLower === 'set đồ' && productCategoryLower === 'sets') ||
+            (parentNameLower === 'áo khoác' && productCategoryLower === 'outerwear') ||
+            (parentNameLower === 'giày' && productCategoryLower === 'shoes') ||
+            (parentNameLower === 'túi xách' && productCategoryLower === 'bags') ||
+            (parentNameLower === 'phụ kiện' && productCategoryLower === 'accessories')
+          )
+          
+          if (isFromParent) {
+            const keywords = extractKeywords(targetCategoryStr)
+            return keywords.some(k => productNameLower.includes(k) || p.tags.some(t => t.toLowerCase().normalize('NFC').includes(k)))
+          }
+        }
+        
+        // 3. Nếu selectedCategory là danh mục cha (object), hiển thị cả sản phẩm của các danh mục con của nó
+        if (typeof selectedCategory === 'object' && selectedCategory.subcategories) {
+          const subNames = selectedCategory.subcategories.map(s => s.name.toLowerCase().normalize('NFC'))
+          const matchesAnySub = subNames.some(subName => {
+            let keyword = subName
+            if (keyword.startsWith('áo ')) keyword = keyword.substring(3)
+            if (keyword.startsWith('quần ')) keyword = keyword.substring(5)
+            if (keyword.startsWith('đầm ')) keyword = keyword.substring(4)
+            if (keyword.startsWith('set ')) keyword = keyword.substring(4)
+            if (keyword.startsWith('giày ')) keyword = keyword.substring(5)
+            if (keyword.startsWith('túi ')) keyword = keyword.substring(4)
+            if (keyword.startsWith('balo ')) keyword = keyword.substring(5)
+            return productNameLower.includes(keyword) || p.tags.some(t => t.toLowerCase().normalize('NFC').includes(keyword))
+          })
+          if (matchesAnySub) return true
+        }
+
+        return false
+      })
     }
 
     // 3. Color
@@ -73,9 +290,23 @@ export const ShopPage = () => {
     // 5. Price
     result = result.filter(p => p.price <= maxPrice)
 
-    // 6. Sorting
+    // 6. Brand
+    if (selectedBrands.length > 0) {
+      result = result.filter(p => p.brand && selectedBrands.includes(p.brand))
+    }
+
+    // 7. Material
+    if (selectedMaterials.length > 0) {
+      result = result.filter(p => p.material && selectedMaterials.includes(p.material))
+    }
+
+    // 8. Occasion
+    if (selectedOccasions.length > 0) {
+      result = result.filter(p => p.occasion && selectedOccasions.includes(p.occasion))
+    }
+
+    // 9. Sorting
     if (sortBy === 'newest') {
-      // Giả lập sắp xếp theo id (các id lớn hơn là mới hơn)
       result.sort((a, b) => b.id.localeCompare(a.id))
     } else if (sortBy === 'price-asc') {
       result.sort((a, b) => a.price - b.price)
@@ -86,7 +317,7 @@ export const ShopPage = () => {
     }
 
     return result
-  }, [searchQuery, selectedCategory, selectedColor, selectedSize, maxPrice, sortBy])
+  }, [searchQuery, selectedCategory, selectedColor, selectedSize, maxPrice, sortBy, selectedBrands, selectedMaterials, selectedOccasions, searchParams])
 
   // GSAP animation khi danh sách sản phẩm thay đổi
   useLayoutEffect(() => {
@@ -134,8 +365,30 @@ export const ShopPage = () => {
     setSelectedCategory('all')
     setSelectedColor(null)
     setSelectedSize(null)
-    setMaxPrice(1500000)
+    setMaxPrice(2000000)
     setSortBy('newest')
+    setSelectedBrands([])
+    setSelectedMaterials([])
+    setSelectedOccasions([])
+    setSearchParams({})
+  }
+
+  const handleToggleBrand = (brand) => {
+    setSelectedBrands(prev =>
+      prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand]
+    )
+  }
+
+  const handleToggleMaterial = (mat) => {
+    setSelectedMaterials(prev =>
+      prev.includes(mat) ? prev.filter(m => m !== mat) : [...prev, mat]
+    )
+  }
+
+  const handleToggleOccasion = (occ) => {
+    setSelectedOccasions(prev =>
+      prev.includes(occ) ? prev.filter(o => o !== occ) : [...prev, occ]
+    )
   }
 
   return (
@@ -165,6 +418,7 @@ export const ShopPage = () => {
                 <h3 className="font-semibold text-brand-charcoal text-lg">Bộ lọc tìm kiếm</h3>
                 <button
                   onClick={handleClearFilters}
+                  id="btn-clear-filters"
                   className="text-xs font-semibold text-brand-muted hover:text-brand-charcoal transition-colors border-b border-transparent hover:border-brand-charcoal"
                 >
                   Xóa tất cả
@@ -179,6 +433,7 @@ export const ShopPage = () => {
                 <div className="relative">
                   <input
                     type="text"
+                    id="search-product-input"
                     placeholder="Tên sản phẩm..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -200,20 +455,96 @@ export const ShopPage = () => {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-3">
                   Danh mục quần áo
                 </label>
-                <div className="flex flex-col gap-2">
-                  {Object.keys(categoryLabels).map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`text-left text-sm py-1 px-2 rounded transition-all font-medium ${
-                        selectedCategory === cat
-                          ? 'bg-brand-charcoal text-white font-semibold'
-                          : 'text-brand-charcoal hover:bg-brand-cream hover:text-brand-charcoal'
-                      }`}
-                    >
-                      {categoryLabels[cat]}
-                    </button>
-                  ))}
+                <div className="flex flex-col gap-1">
+                  {/* Option: Tất cả */}
+                  <button
+                    onClick={() => {
+                      setSelectedCategory('all');
+                      setSearchParams({});
+                    }}
+                    className={`text-left text-sm py-2 px-3 rounded-lg transition-all font-semibold ${
+                      selectedCategory === 'all'
+                        ? 'bg-brand-charcoal text-white shadow-sm'
+                        : 'text-brand-charcoal hover:bg-brand-cream'
+                    }`}
+                  >
+                    Tất Cả
+                  </button>
+
+                  {dbCategories.length > 0 ? (
+                    // Hiển thị danh mục động từ BE theo kiểu đa cấp (Zara/Uniqlo style)
+                    dbCategories.map((cat) => {
+                      const isRootSelected = selectedCategory !== 'all' && (
+                        selectedCategory.id === cat.id || 
+                        selectedCategory.name === cat.name ||
+                        selectedCategory.parent === cat.id ||
+                        selectedCategory.parentId === cat.id
+                      );
+                      return (
+                        <div key={cat.id} className="flex flex-col mt-1">
+                          {/* Root category */}
+                          <button
+                            onClick={() => {
+                              setSelectedCategory(cat);
+                              setSearchParams({ category: cat.name });
+                            }}
+                            className={`text-left text-sm py-1.5 px-3 rounded-lg transition-all font-semibold flex items-center justify-between group ${
+                              isRootSelected
+                                ? 'bg-brand-charcoal text-white'
+                                : 'text-brand-charcoal hover:bg-brand-cream'
+                            }`}
+                          >
+                            <span>{cat.name}</span>
+                            {cat.subcategories && cat.subcategories.length > 0 && (
+                              <svg className={`w-3.5 h-3.5 transition-transform duration-205 ${isRootSelected ? 'rotate-90' : 'group-hover:translate-x-0.5'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              </svg>
+                            )}
+                          </button>
+
+                          {/* Subcategories */}
+                          {cat.subcategories && cat.subcategories.length > 0 && (
+                            <div className="flex flex-col pl-4 gap-1.5 mt-1 mb-2 border-l border-gray-100 ml-3.5">
+                              {cat.subcategories.map((sub) => {
+                                const isSubSelected = selectedCategory !== 'all' && (selectedCategory.id === sub.id || selectedCategory.name === sub.name);
+                                return (
+                                  <button
+                                    key={sub.id}
+                                    onClick={() => {
+                                      setSelectedCategory(sub);
+                                      setSearchParams({ category: sub.name });
+                                    }}
+                                    className={`text-left text-xs py-1 px-2 rounded transition-all font-medium ${
+                                      isSubSelected
+                                        ? 'text-brand-blush font-bold border-l-2 border-brand-blush pl-1.5'
+                                        : 'text-brand-muted hover:text-brand-charcoal'
+                                    }`}
+                                  >
+                                    {sub.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    // Fallback sang danh mục tĩnh nếu BE chưa có dữ liệu
+                    Object.keys(categoryLabels).filter(key => key !== 'all').map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`text-left text-sm py-1.5 px-3 rounded-lg transition-all font-medium ${
+                          selectedCategory === cat
+                            ? 'bg-brand-charcoal text-white font-semibold'
+                            : 'text-brand-charcoal hover:bg-brand-cream'
+                        }`}
+                      >
+                        {categoryLabels[cat]}
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -268,7 +599,9 @@ export const ShopPage = () => {
                 </div>
               </div>
 
-              {/* 5. Max Price slider */}
+              {/* Thương hiệu, Chất liệu, Dịp sử dụng bộ lọc đã bỏ theo yêu cầu */}
+
+              {/* 8. Max Price slider */}
               <div>
                 <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-brand-muted mb-3">
                   <span>Giá tối đa</span>
@@ -279,7 +612,7 @@ export const ShopPage = () => {
                 <input
                   type="range"
                   min="200000"
-                  max="1500000"
+                  max="2000000"
                   step="50000"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(Number(e.target.value))}
@@ -287,7 +620,7 @@ export const ShopPage = () => {
                 />
                 <div className="flex justify-between text-[10px] text-brand-muted mt-1 font-semibold">
                   <span>200k</span>
-                  <span>1.5M</span>
+                  <span>2.0M</span>
                 </div>
               </div>
 

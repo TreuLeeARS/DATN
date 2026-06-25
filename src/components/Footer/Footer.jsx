@@ -40,7 +40,7 @@ export const Footer = () => {
           {/* Brand Column */}
           <div>
             <h3 className="text-2xl font-display font-bold text-white mb-4">
-              Pee!
+              OUTTA
             </h3>
             <p className="text-sm text-gray-400 mb-6">
               Thời trang nữ cao cấp tôn vinh phong cách và cá tính riêng của bạn.
@@ -87,7 +87,7 @@ export const Footer = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Copyright */}
             <p className="text-xs text-gray-400">
-              © 2024 Pee! Clothing. Bảo lưu mọi quyền.
+              © 2024 OUTTA Clothing. Bảo lưu mọi quyền.
             </p>
 
             {/* Legal Links */}

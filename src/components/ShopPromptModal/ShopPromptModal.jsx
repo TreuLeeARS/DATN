@@ -182,7 +182,7 @@ export const ShopPromptModal = () => {
             Tặng bạn món quà nhỏ làm quen!
           </h3>
           <p className="text-brand-muted text-sm leading-relaxed mb-6">
-            Tặng ngay mã giảm giá <span className="font-bold text-brand-charcoal">15%</span> cho đơn hàng đầu tiên của bạn tại <span className="font-bold text-brand-charcoal">Pee!</span>. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.
+            Tặng ngay mã giảm giá <span className="font-bold text-brand-charcoal">15%</span> cho đơn hàng đầu tiên của bạn tại <span className="font-bold text-brand-charcoal">OUTTA</span>. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.
           </p>
 
           {/* Action buttons */}
