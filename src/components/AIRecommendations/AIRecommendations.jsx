@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import toast from 'react-hot-toast'
@@ -11,6 +12,7 @@ import { duration, ease } from '../../utils/gsapDefaults.js'
 gsap.registerPlugin(ScrollTrigger)
 
 export const AIRecommendations = () => {
+  const navigate = useNavigate()
   const [recommendations, setRecommendations] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const { addItem } = useCartContext()
@@ -74,6 +76,7 @@ export const AIRecommendations = () => {
   const handleAddToCart = (product) => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
+      sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'cart' }))
       showAuthToast('Đăng nhập để thêm sản phẩm vào giỏ hàng.')
       return
     }
@@ -84,11 +87,12 @@ export const AIRecommendations = () => {
   const handleBuyNow = (product) => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
+      sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'buy' }))
       showAuthToast('Đăng nhập để tiến hành mua sắm ngay.')
       return
     }
     addItem(product, 1)
-    toast.success(`Đã thêm "${product.name}" vào giỏ hàng! Tiến hành thanh toán...`)
+    navigate('/cart')
   }
 
   return (

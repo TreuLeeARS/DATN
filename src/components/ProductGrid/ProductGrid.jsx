@@ -53,6 +53,7 @@ export const ProductGrid = () => {
   const handleAddToCart = (product) => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
+      sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'cart' }))
       showAuthToast('Đăng nhập để thêm sản phẩm vào giỏ hàng.')
       return
     }
@@ -63,6 +64,7 @@ export const ProductGrid = () => {
   const handleBuyNow = (product) => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
+      sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'buy' }))
       showAuthToast('Đăng nhập để tiến hành mua sắm ngay.')
       return
     }
