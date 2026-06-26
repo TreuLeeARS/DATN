@@ -21,6 +21,7 @@ import { CategoryManager } from './pages/Admin/CategoryManager.jsx'
 import { ProductManager } from './pages/Admin/ProductManager.jsx'
 import { OrderManager } from './pages/Admin/OrderManager.jsx'
 import { UserManager } from './pages/Admin/UserManager.jsx'
+import { CouponManager } from './pages/Admin/CouponManager.jsx'
 import { MyOrders } from './pages/ShopPage/MyOrders.jsx'
 
 function App() {
@@ -98,6 +99,7 @@ function App() {
           <Route path="products" element={<ProductManager />} />
           <Route path="orders" element={<OrderManager />} />
           <Route path="users" element={<UserManager />} />
+          <Route path="coupons" element={<CouponManager />} />
         </Route>
       </Routes>
     </CartProvider>
