@@ -37,8 +37,8 @@ export const NavLinks = ({ links, mobile = false }) => {
     <nav
       className={cn(
         mobile
-          ? 'flex flex-col space-y-4 px-4 py-6'
-          : 'hidden md:flex items-center space-x-2.5 xl:space-x-4'
+          ? 'flex flex-col space-y-2'
+          : 'hidden md:flex items-center space-x-4 xl:space-x-7'
       )}
     >
       {links.map(link => {
@@ -50,14 +50,22 @@ export const NavLinks = ({ links, mobile = false }) => {
               href={link.href}
               onClick={(e) => handleNavClick(e, link.href)}
               className={cn(
-                'font-semibold transition-colors hover:text-brand-blush cursor-pointer whitespace-nowrap flex items-center gap-1 py-1.5',
-                link.isSale ? 'text-brand-blush' : 'text-brand-charcoal',
-                mobile ? 'text-base block' : 'text-[11px] xl:text-xs uppercase tracking-wider'
+                'transition-all duration-300 cursor-pointer whitespace-nowrap flex items-center gap-1 py-2',
+                link.isSale ? 'text-red-800' : 'text-brand-charcoal',
+                mobile 
+                  ? 'text-sm tracking-[0.15em] font-medium uppercase py-2' 
+                  : 'text-[10px] xl:text-[11px] uppercase tracking-[0.2em] font-medium hover:text-black hover:opacity-60'
               )}
             >
               <span>{link.label}</span>
               {hasSublinks && !mobile && (
-                <svg className="w-2.5 h-2.5 text-brand-muted group-hover:text-brand-blush transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg 
+                  className="w-2.5 h-2.5 text-brand-muted group-hover:text-black group-hover:rotate-180 transition-all duration-300" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor" 
+                  strokeWidth={1.5}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               )}
@@ -65,13 +73,13 @@ export const NavLinks = ({ links, mobile = false }) => {
 
             {/* Dropdown Menu for Desktop */}
             {hasSublinks && !mobile && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-44 bg-white border border-gray-100/80 shadow-lg rounded-xl py-2 opacity-0 translate-y-1.5 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 z-50">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-52 bg-white/95 backdrop-blur-md border border-black/10 shadow-sm rounded-none py-3 opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                 {link.sublinks.map(sub => (
                   <a
                     key={sub.label}
                     href={sub.href}
                     onClick={(e) => handleNavClick(e, sub.href)}
-                    className="block px-4 py-1.5 text-[10px] font-bold text-brand-charcoal hover:bg-brand-cream hover:text-brand-blush transition-colors uppercase tracking-wider"
+                    className="block px-6 py-2.5 text-[9px] xl:text-[10px] font-medium text-brand-charcoal hover:bg-black/[0.03] hover:text-black transition-colors uppercase tracking-[0.15em]"
                   >
                     {sub.label}
                   </a>
@@ -81,13 +89,13 @@ export const NavLinks = ({ links, mobile = false }) => {
 
             {/* Sublinks list for Mobile */}
             {hasSublinks && mobile && (
-              <div className="flex flex-col pl-4 mt-0.5 border-l border-gray-150 gap-1.5 mb-1.5">
+              <div className="flex flex-col pl-4 mt-1 border-l border-gray-200 gap-1.5 mb-2">
                 {link.sublinks.map(sub => (
                   <a
                     key={sub.label}
                     href={sub.href}
                     onClick={(e) => handleNavClick(e, sub.href)}
-                    className="text-xs font-semibold text-brand-muted hover:text-brand-charcoal py-0.5 block uppercase tracking-wider"
+                    className="text-xs font-normal text-brand-muted hover:text-brand-charcoal py-1 block uppercase tracking-wider"
                   >
                     {sub.label}
                   </a>
