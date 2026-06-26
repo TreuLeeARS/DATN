@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import authApi from '../../api/authApi'
+import { isAdmin } from '../../utils/auth.js'
 
 // Auth buttons: account icon (mobile/compact) + Sign In / Sign Up links (desktop)
 export const AuthButtons = () => {
@@ -43,10 +44,19 @@ export const AuthButtons = () => {
   }
 
   if (isLoggedIn) {
+    const isUserAdmin = isAdmin()
     return (
       <div className="flex items-center space-x-4">
         {/* Desktop user greeting */}
         <div className="hidden sm:flex items-center space-x-3 text-sm">
+          {isUserAdmin && (
+            <Link
+              to="/admin"
+              className="font-semibold text-brand-blush hover:text-brand-charcoal border border-brand-blush/80 hover:bg-brand-blush rounded px-2.5 py-1 text-xs uppercase tracking-wider transition-all duration-300 mr-2"
+            >
+              Quản trị
+            </Link>
+          )}
           <span className="font-semibold text-brand-charcoal">
             Xin chào, <span className="text-brand-blush">{username}</span>
           </span>
@@ -61,6 +71,14 @@ export const AuthButtons = () => {
 
         {/* Mobile: avatar icon with click to logout */}
         <div className="sm:hidden flex items-center space-x-2">
+          {isUserAdmin && (
+            <Link
+              to="/admin"
+              className="text-[10px] font-bold text-brand-blush border border-brand-blush/60 rounded px-1.5 py-0.5 uppercase tracking-wider transition-colors mr-1"
+            >
+              Admin
+            </Link>
+          )}
           <span className="text-xs font-semibold text-brand-charcoal max-w-[80px] truncate">
             {username}
           </span>

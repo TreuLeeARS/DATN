@@ -13,6 +13,12 @@ import { ShopPage } from './pages/ShopPage/index.js'
 import { CartPage } from './pages/CartPage/index.js'
 import { ShopPromptModal } from './components/ShopPromptModal/ShopPromptModal.jsx'
 
+// Admin Panel Components & Pages
+import { AdminProtectedRoute } from './components/AdminProtectedRoute.jsx'
+import { AdminLayout } from './components/AdminLayout.jsx'
+import { AdminDashboard } from './pages/Admin/AdminDashboard.jsx'
+import { CategoryManager } from './pages/Admin/CategoryManager.jsx'
+
 function App() {
   const location = useLocation()
 
@@ -70,6 +76,19 @@ function App() {
 
         {/* Cart / Checkout Page */}
         <Route path="/cart" element={<CartPage />} />
+
+        {/* Admin Panel Route Group */}
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout />
+            </AdminProtectedRoute>
+          }
+        >
+          <Route index element={<AdminDashboard />} />
+          <Route path="categories" element={<CategoryManager />} />
+        </Route>
       </Routes>
     </CartProvider>
   )

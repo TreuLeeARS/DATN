@@ -1,0 +1,272 @@
+import { useState } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import authApi from '../api/authApi'
+import { cn } from '../utils/cn'
+
+export const AdminLayout = () => {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const username = localStorage.getItem('username') || 'Admin'
+
+  const menuItems = [
+    {
+      label: 'Tổng quan',
+      href: '/admin',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+        </svg>
+      )
+    },
+    {
+      label: 'Quản lý danh mục',
+      href: '/admin/categories',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+      )
+    },
+    {
+      label: 'Sản phẩm (Sắp ra mắt)',
+      href: '#',
+      disabled: true,
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      )
+    },
+    {
+      label: 'Đơn hàng (Sắp ra mắt)',
+      href: '#',
+      disabled: true,
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+      )
+    }
+  ]
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+      localStorage.removeItem('username')
+      localStorage.removeItem('pee_cart_items')
+      navigate('/')
+      window.location.reload()
+    }
+  }
+
+  // Determine page title based on location
+  const getPageTitle = () => {
+    if (location.pathname === '/admin') return 'Tổng quan hệ thống'
+    if (location.pathname === '/admin/categories') return 'Quản lý danh mục sản phẩm'
+    return 'Admin Panel'
+  }
+
+  return (
+    <div className="min-h-screen bg-brand-cream/40 flex text-brand-charcoal">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden md:flex flex-col w-72 bg-brand-charcoal text-white shrink-0 shadow-xl border-r border-white/5">
+        {/* Brand Logo */}
+        <div className="h-20 flex items-center px-8 border-b border-white/5">
+          <Link to="/" className="text-2xl font-display font-bold tracking-widest text-brand-blush">
+            OUTTA <span className="text-xs font-sans font-normal text-white/50 tracking-wider ml-1">ADMIN</span>
+          </Link>
+        </div>
+
+        {/* Menu Navigation */}
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          {menuItems.map((item, idx) => {
+            const isActive = location.pathname === item.href
+            return (
+              <Link
+                key={idx}
+                to={item.disabled ? '#' : item.href}
+                className={cn(
+                  "flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 text-sm font-medium",
+                  item.disabled && "opacity-50 cursor-not-allowed",
+                  isActive
+                    ? "bg-brand-blush text-brand-charcoal font-semibold shadow-md shadow-brand-blush/20"
+                    : "text-white/70 hover:text-white hover:bg-white/5"
+                )}
+                onClick={(e) => item.disabled && e.preventDefault()}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Footer Area with profile & logout */}
+        <div className="p-6 border-t border-white/5 bg-black/10">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-brand-blush/30 border border-brand-blush/40 flex items-center justify-center text-brand-blush font-semibold uppercase">
+              {username.charAt(0)}
+            </div>
+            <div className="truncate">
+              <p className="text-sm font-semibold text-white">{username}</p>
+              <p className="text-xs text-white/40">Quản trị viên</p>
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <Link
+              to="/"
+              className="flex-1 flex justify-center items-center py-2 px-3 rounded-lg border border-white/10 text-xs font-medium text-white/80 hover:bg-white/5 transition-colors"
+            >
+              Cửa hàng
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="flex-1 py-2 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold tracking-wider transition-colors uppercase text-center cursor-pointer"
+            >
+              Đăng xuất
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Drawer Sidebar */}
+      {isMobileSidebarOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-brand-charcoal/60 backdrop-blur-sm"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+
+          <aside className="relative flex flex-col w-72 bg-brand-charcoal text-white h-full shadow-2xl animate-fade-in">
+            {/* Close button */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="absolute top-6 right-6 text-white/70 hover:text-white p-1 hover:bg-white/5 rounded-lg transition-all"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Brand Logo */}
+            <div className="h-20 flex items-center px-8 border-b border-white/5">
+              <span className="text-2xl font-display font-bold tracking-widest text-brand-blush">
+                OUTTA <span className="text-xs font-sans font-normal text-white/50 tracking-wider ml-1">ADMIN</span>
+              </span>
+            </div>
+
+            {/* Navigation links */}
+            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+              {menuItems.map((item, idx) => {
+                const isActive = location.pathname === item.href
+                return (
+                  <Link
+                    key={idx}
+                    to={item.disabled ? '#' : item.href}
+                    className={cn(
+                      "flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 text-sm font-medium",
+                      item.disabled && "opacity-50 cursor-not-allowed",
+                      isActive
+                        ? "bg-brand-blush text-brand-charcoal font-semibold shadow-md"
+                        : "text-white/70 hover:text-white hover:bg-white/5"
+                    )}
+                    onClick={(e) => {
+                      if (item.disabled) {
+                        e.preventDefault()
+                      } else {
+                        setIsMobileSidebarOpen(false)
+                      }
+                    }}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+
+            {/* Footer profiles */}
+            <div className="p-6 border-t border-white/5 bg-black/10">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-brand-blush/30 border border-brand-blush/40 flex items-center justify-center text-brand-blush font-semibold uppercase">
+                  {username.charAt(0)}
+                </div>
+                <div className="truncate">
+                  <p className="text-sm font-semibold text-white">{username}</p>
+                  <p className="text-xs text-white/40">Quản trị viên</p>
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <Link
+                  to="/"
+                  className="flex-1 flex justify-center items-center py-2 px-3 rounded-lg border border-white/10 text-xs font-medium text-white/80 hover:bg-white/5 transition-colors"
+                >
+                  Cửa hàng
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 py-2 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold tracking-wider transition-colors uppercase text-center cursor-pointer"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+        {/* Top Header Bar */}
+        <header className="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-6 sm:px-10 shrink-0">
+          <div className="flex items-center space-x-4">
+            {/* Mobile Menu Open Trigger */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden p-2 text-brand-charcoal hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* Breadcrumb / Title */}
+            <div>
+              <h1 className="text-lg sm:text-xl font-semibold text-brand-charcoal tracking-wide">
+                {getPageTitle()}
+              </h1>
+              <div className="hidden sm:flex items-center space-x-2 text-xs text-brand-muted mt-0.5">
+                <span>Quản trị</span>
+                <span>/</span>
+                <span className="text-brand-charcoal font-medium">
+                  {location.pathname === '/admin' ? 'Dashboard' : 'Danh mục'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <span className="hidden sm:inline-block text-xs font-medium text-brand-muted bg-brand-cream py-1 px-3 rounded-full border border-gray-100">
+              Môi trường Phát triển
+            </span>
+            <div className="w-8 h-8 rounded-full bg-brand-charcoal text-white flex items-center justify-center font-semibold text-xs border border-gray-100">
+              A
+            </div>
+          </div>
+        </header>
+
+        {/* Dynamic Nested Content */}
+        <main className="flex-1 p-6 sm:p-10 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  )
+}

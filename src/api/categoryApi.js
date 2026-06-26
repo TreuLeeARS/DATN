@@ -21,9 +21,24 @@ const categoryApi = {
     return axiosClient.post('/categorys', data);
   },
 
-  // ADMIN: Xóa danh mục theo ID
+  // ADMIN: Xóa danh mục theo ID (Xóa Mềm)
   deleteCategory: (id) => {
     return axiosClient.delete(`/categorys/${id}`);
+  },
+
+  // ADMIN/STAFF: Lấy tất cả danh mục (bao gồm cả đã xóa mềm)
+  getAllCategoriesForAdmin: () => {
+    return axiosClient.get('/categorys/admin/all');
+  },
+
+  // ADMIN/STAFF: Cập nhật thông tin danh mục theo ID
+  updateCategory: (id, data) => {
+    return axiosClient.put(`/categorys/${id}`, data);
+  },
+
+  // ADMIN/STAFF: Khôi phục danh mục đã bị xóa mềm
+  restoreCategory: (id) => {
+    return axiosClient.patch(`/categorys/${id}/restore`);
   }
 };
 
