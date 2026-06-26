@@ -29,9 +29,8 @@ export const AdminLayout = () => {
       )
     },
     {
-      label: 'Sản phẩm (Sắp ra mắt)',
-      href: '#',
-      disabled: true,
+      label: 'Quản lý sản phẩm',
+      href: '/admin/products',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -39,12 +38,20 @@ export const AdminLayout = () => {
       )
     },
     {
-      label: 'Đơn hàng (Sắp ra mắt)',
-      href: '#',
-      disabled: true,
+      label: 'Quản lý đơn hàng',
+      href: '/admin/orders',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+      )
+    },
+    {
+      label: 'Quản lý người dùng',
+      href: '/admin/users',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3a1 1 0 01-1-1 7 7 0 0114 0 1 1 0 01-1 1zm0-3a5.982 5.982 0 00-3-4.829 7.006 7.006 0 014.375-7.49A5.998 5.998 0 0115 11v7z" />
         </svg>
       )
     }
@@ -69,6 +76,9 @@ export const AdminLayout = () => {
   const getPageTitle = () => {
     if (location.pathname === '/admin') return 'Tổng quan hệ thống'
     if (location.pathname === '/admin/categories') return 'Quản lý danh mục sản phẩm'
+    if (location.pathname === '/admin/products') return 'Quản lý danh mục sản phẩm và biến thể'
+    if (location.pathname === '/admin/orders') return 'Quản lý đơn đặt hàng toàn hệ thống'
+    if (location.pathname === '/admin/users') return 'Quản lý tài khoản người dùng'
     return 'Admin Panel'
   }
 
@@ -246,7 +256,11 @@ export const AdminLayout = () => {
                 <span>Quản trị</span>
                 <span>/</span>
                 <span className="text-brand-charcoal font-medium">
-                  {location.pathname === '/admin' ? 'Dashboard' : 'Danh mục'}
+                  {location.pathname === '/admin' ? 'Dashboard' : 
+                   location.pathname === '/admin/categories' ? 'Danh mục' :
+                   location.pathname === '/admin/products' ? 'Sản phẩm' :
+                   location.pathname === '/admin/orders' ? 'Đơn hàng' :
+                   location.pathname === '/admin/users' ? 'Người dùng' : 'Chi tiết'}
                 </span>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -6,8 +6,9 @@ import toast from 'react-hot-toast'
 import { showAuthToast } from '../../utils/authToast.jsx'
 import { ProductCard } from './ProductCard.jsx'
 import { useCartContext } from '../../context/CartContext.jsx'
-import { products } from '../../data/products.js'
 import { duration, ease, stagger } from '../../utils/gsapDefaults.js'
+import productApi from '../../api/productApi.js'
+import { mapDbProduct } from '../../utils/productMapper.js'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -17,7 +18,32 @@ export const ProductGrid = () => {
   const gridRef = useRef(null)
   const titleRef = useRef(null)
 
+  const [productsList, setProductsList] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+    const fetchProducts = async () => {
+      try {
+        setLoading(true)
+        const res = await productApi.getAllProducts({ page: 0, size: 8 })
+        if (res && res.data && res.data.content && isMounted) {
+          const mapped = res.data.content.map(p => mapDbProduct(p)).filter(Boolean)
+          setProductsList(mapped)
+        }
+      } catch (err) {
+        console.error('Error fetching homepage products:', err)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    fetchProducts()
+    return () => { isMounted = false }
+  }, [])
+
   useLayoutEffect(() => {
+    if (loading || productsList.length === 0) return
+
     const ctx = gsap.context(() => {
       // Animate section title
       gsap.from(titleRef.current, {
@@ -48,7 +74,7 @@ export const ProductGrid = () => {
     }, gridRef)
 
     return () => ctx.revert()
-  }, [])
+  }, [loading, productsList])
 
   const handleAddToCart = (product) => {
     const token = localStorage.getItem('accessToken')
@@ -96,22 +122,32 @@ export const ProductGrid = () => {
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-          {products.map(product => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAddToCart={handleAddToCart}
-              onBuyNow={handleBuyNow}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 w-full animate-fade-in">
+            <svg className="w-8 h-8 animate-spin text-brand-charcoal mb-4" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <p className="text-sm font-medium text-brand-muted">Đang tải bộ sưu tập...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            {productsList.map(product => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onAddToCart={handleAddToCart}
+                onBuyNow={handleBuyNow}
+              />
+            ))}
+          </div>
+        )}
 
         {/* View All CTA */}
         <div className="text-center mt-12 md:mt-16">
           <button
             onClick={() => navigate('/shop')}
-            className="btn-secondary"
+            className="btn-secondary font-semibold"
           >
             Xem Tất Cả Sản Phẩm
           </button>

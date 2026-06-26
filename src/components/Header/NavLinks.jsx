@@ -73,7 +73,7 @@ export const NavLinks = ({ links, mobile = false }) => {
 
             {/* Dropdown Menu for Desktop */}
             {hasSublinks && !mobile && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-52 bg-white/95 backdrop-blur-md border border-black/10 shadow-sm rounded-none py-3 opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-52 bg-white/95 backdrop-blur-md border border-black/10 shadow-sm rounded-none py-3 opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 delay-150 group-hover:delay-0 z-50 before:absolute before:content-[''] before:top-[-10px] before:left-0 before:right-0 before:h-[10px]">
                 {link.sublinks.map(sub => (
                   <a
                     key={sub.label}

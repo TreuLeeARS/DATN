@@ -68,7 +68,7 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
             </Link>
           )}
           <Link
-            to="/cart"
+            to="/my-orders"
             onClick={onCloseDrawer}
             className="block px-2 py-1 text-xs tracking-[0.15em] font-medium text-brand-charcoal uppercase hover:opacity-60 transition-opacity"
           >
@@ -129,7 +129,7 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
         </button>
 
         {/* Dropdown User Menu */}
-        <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-black/10 shadow-sm rounded-none py-3.5 opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
+        <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-black/10 shadow-sm rounded-none py-3.5 opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 delay-150 group-hover:delay-0 z-50 before:absolute before:content-[''] before:top-[-10px] before:left-0 before:right-0 before:h-[10px]">
           <div className="px-4 py-2 border-b border-gray-100 mb-2">
             <p className="text-[9px] tracking-wider text-brand-muted uppercase">Tài khoản</p>
             <p className="text-xs font-semibold text-brand-charcoal truncate">{username}</p>
@@ -145,7 +145,7 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
           )}
           
           <Link
-            to="/cart"
+            to="/my-orders"
             className="block px-4 py-2 text-[10px] tracking-wider font-medium text-brand-charcoal hover:bg-black/[0.03] uppercase transition-colors"
           >
             Lịch sử mua hàng

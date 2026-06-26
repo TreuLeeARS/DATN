@@ -18,6 +18,10 @@ import { AdminProtectedRoute } from './components/AdminProtectedRoute.jsx'
 import { AdminLayout } from './components/AdminLayout.jsx'
 import { AdminDashboard } from './pages/Admin/AdminDashboard.jsx'
 import { CategoryManager } from './pages/Admin/CategoryManager.jsx'
+import { ProductManager } from './pages/Admin/ProductManager.jsx'
+import { OrderManager } from './pages/Admin/OrderManager.jsx'
+import { UserManager } from './pages/Admin/UserManager.jsx'
+import { MyOrders } from './pages/ShopPage/MyOrders.jsx'
 
 function App() {
   const location = useLocation()
@@ -77,6 +81,9 @@ function App() {
         {/* Cart / Checkout Page */}
         <Route path="/cart" element={<CartPage />} />
 
+        {/* Customer Order History Page */}
+        <Route path="/my-orders" element={<MyOrders />} />
+
         {/* Admin Panel Route Group */}
         <Route
           path="/admin"
@@ -88,6 +95,9 @@ function App() {
         >
           <Route index element={<AdminDashboard />} />
           <Route path="categories" element={<CategoryManager />} />
+          <Route path="products" element={<ProductManager />} />
+          <Route path="orders" element={<OrderManager />} />
+          <Route path="users" element={<UserManager />} />
         </Route>
       </Routes>
     </CartProvider>

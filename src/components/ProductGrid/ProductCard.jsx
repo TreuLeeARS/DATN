@@ -1,8 +1,10 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { ProductBadge } from './ProductBadge.jsx'
 import { duration, ease } from '../../utils/gsapDefaults.js'
+import productApi from '../../api/productApi'
+import { mapDbProduct } from '../../utils/productMapper'
 
 // Nhãn danh mục tiếng Việt
 const categoryLabels = {
@@ -16,7 +18,7 @@ const categoryLabels = {
   accessories: 'Phụ kiện',
 }
 
-export const ProductCard = ({ product, onAddToCart, onBuyNow }) => {
+export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) => {
   const cardRef = useRef(null)
   const imageRef = useRef(null)
   const overlayRef = useRef(null)
@@ -27,6 +29,40 @@ export const ProductCard = ({ product, onAddToCart, onBuyNow }) => {
   const [selectedSize, setSelectedSize] = useState(null)
   const [showWarning, setShowWarning] = useState(false)
   const timelineRef = useRef(null)
+
+  const [detailedProduct, setDetailedProduct] = useState(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    const fetchDetail = async () => {
+      if (initialProduct.variants && initialProduct.variants.length > 0) {
+        setDetailedProduct(initialProduct)
+        return
+      }
+      
+      const productId = initialProduct.productId || initialProduct.id
+      if (!productId || isNaN(productId)) return
+
+      try {
+        setLoadingDetail(true)
+        const res = await productApi.getProductDetail(Number(productId))
+        if (res && res.data && isMounted) {
+          const mapped = mapDbProduct(res.data)
+          setDetailedProduct(mapped)
+        }
+      } catch (err) {
+        console.error('Error loading product details in card:', err)
+      } finally {
+        if (isMounted) setLoadingDetail(false)
+      }
+    }
+    fetchDetail()
+    return () => { isMounted = false }
+  }, [initialProduct])
+
+  const product = detailedProduct || initialProduct
+
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {

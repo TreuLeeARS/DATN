@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import { Header } from '../../components/Header/Header.jsx'
 import { Footer } from '../../components/Footer/Footer.jsx'
 import { useCartContext } from '../../context/CartContext.jsx'
+import orderApi from '../../api/orderApi.js'
+import paymentApi from '../../api/paymentApi.js'
 
 export const CartPage = () => {
   const navigate = useNavigate()
@@ -115,7 +117,7 @@ export const CartPage = () => {
   const shippingFee = selectedTotal >= 1000000 ? 0 : 30000
   const finalTotal = Math.max(0, selectedTotal - discountAmount + shippingFee)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validateForm()) {
       toast.error('Vui lòng điền đầy đủ và chính xác thông tin giao hàng!')
@@ -124,31 +126,64 @@ export const CartPage = () => {
 
     setIsSubmitting(true)
 
-    // Giả lập gửi đơn hàng lên Server sau 1.5 giây
-    setTimeout(() => {
-      const orderId = 'PEE-' + Math.floor(100000 + Math.random() * 900000)
-      const newOrder = {
-        orderId,
-        fullName: form.fullName,
-        phone: form.phone,
-        address: form.address,
-        paymentMethod: form.paymentMethod,
-        items: [...selectedItems],
-        subtotal: selectedTotal,
-        discount: discountAmount,
-        shippingFee,
-        total: finalTotal,
-        date: new Date().toLocaleDateString('vi-VN'),
+    try {
+      // Chuẩn bị payload checkout
+      const checkoutData = {
+        shippingAddress: `${form.fullName} | SĐT: ${form.phone} | Địa chỉ: ${form.address}`,
+        couponCode: appliedPromo || null,
+        paymentMethodType: form.paymentMethod === 'cod' ? 'COD' : 'VNPAY'
       }
 
-      setOrderInfo(newOrder)
-      setOrderSuccess(true)
+      // 1. Tạo đơn hàng trên backend
+      const res = await orderApi.checkout(checkoutData)
+      
+      if (res && res.data) {
+        const orderData = res.data
+        
+        // 2. Nếu là COD, thực hiện tạo thanh toán COD tương ứng
+        if (form.paymentMethod === 'cod') {
+          await paymentApi.createCodPayment({
+            orderId: orderData.orderId,
+            amount: orderData.totalAmount
+          })
+        }
+        
+        // Cấu trúc dữ liệu hiển thị màn hình đặt hàng thành công
+        const mappedOrderInfo = {
+          orderId: orderData.orderId,
+          fullName: form.fullName,
+          phone: form.phone,
+          address: orderData.shippingAddress,
+          paymentMethod: form.paymentMethod,
+          total: orderData.totalAmount,
+          items: orderData.items.map(item => ({
+            id: item.productVariantId,
+            name: item.productName,
+            price: item.unitPrice,
+            quantity: item.quantity,
+            selectedSize: item.size,
+            selectedColor: item.color,
+            images: ['https://images.unsplash.com/photo-1609357605129-26f69add5d6e?q=80&w=600&auto=format&fit=crop']
+          })),
+          discount: orderData.discountValue,
+          shippingFee: 0
+        }
+
+        setOrderInfo(mappedOrderInfo)
+        setOrderSuccess(true)
+        
+        // Xóa giỏ hàng local và reload giỏ hàng từ backend
+        await clearCart()
+        setSelectedItemIds([])
+        toast.success('Đặt đơn hàng thành công!')
+      }
+    } catch (err) {
+      console.error('Lỗi khi thanh toán đơn hàng:', err)
+      const errorMsg = err.response?.data?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại.'
+      toast.error(errorMsg)
+    } finally {
       setIsSubmitting(false)
-      // Chỉ xóa các sản phẩm được thanh toán thành công khỏi giỏ hàng
-      selectedItemIds.forEach(id => removeItem(id))
-      setSelectedItemIds([])
-      toast.success('Đặt đơn hàng thành công! Cảm ơn bạn.')
-    }, 1500)
+    }
   }
 
   return (
