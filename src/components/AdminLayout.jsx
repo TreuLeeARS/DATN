@@ -63,6 +63,15 @@ export const AdminLayout = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
         </svg>
       )
+    },
+    {
+      label: 'Quản lý popup gợi ý',
+      href: '/admin/popups',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.02 6.02 0 00-4.902-5.903m0 0V4a2 2 0 00-4 0v.597C7.49 5.217 6.107 7.107 6.107 9.382V14c0 .417-.16.82-.442 1.105L4.242 16.5h15" />
+        </svg>
+      )
     }
   ]
 
@@ -90,6 +99,7 @@ export const AdminLayout = () => {
     if (location.pathname === '/admin/orders') return 'Quản lý đơn đặt hàng toàn hệ thống'
     if (location.pathname === '/admin/users') return 'Quản lý tài khoản người dùng'
     if (location.pathname === '/admin/coupons') return 'Quản lý mã giảm giá (Coupons)'
+    if (location.pathname === '/admin/popups') return 'Quản lý thông báo gợi ý Coupon'
     return 'Admin Panel'
   }
 
@@ -272,7 +282,8 @@ export const AdminLayout = () => {
                    location.pathname === '/admin/products' ? 'Sản phẩm' :
                    location.pathname === '/admin/orders' ? 'Đơn hàng' :
                    location.pathname === '/admin/users' ? 'Người dùng' :
-                   location.pathname === '/admin/coupons' ? 'Mã giảm giá' : 'Chi tiết'}
+                   location.pathname === '/admin/coupons' ? 'Mã giảm giá' : 
+                   location.pathname === '/admin/popups' ? 'Popup gợi ý' : 'Chi tiết'}
                 </span>
               </div>
             </div>
