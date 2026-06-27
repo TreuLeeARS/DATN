@@ -113,8 +113,13 @@ export const UserManager = () => {
       }
 
       if (res && res.data) {
-        setUsers(res.data.content || [])
-        setTotalPages(res.data.totalPages || 1)
+        if (Array.isArray(res.data)) {
+          setUsers(res.data);
+          setTotalPages(1);
+        } else {
+          setUsers(res.data.content || []);
+          setTotalPages(res.data.totalPages || 1);
+        }
       }
     } catch (err) {
       console.error('Error loading user list:', err)
