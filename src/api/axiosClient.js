@@ -24,24 +24,116 @@ axiosClient.interceptors.request.use(
   }
 );
 
+// Biến theo dõi trạng thái đang refresh và hàng đợi lưu các request bị dừng chờ refresh xong
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Response Interceptor: Xử lý dữ liệu trả về và lỗi tập trung
 axiosClient.interceptors.response.use(
   (response) => {
     // Trả về trực tiếp data nhận được từ API để không cần gõ response.data ở bên ngoài
     return response.data;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    
     // Xử lý lỗi toàn cục (Global Error Handling)
     if (error.response) {
       const { status, data } = error.response;
       
-      switch (status) {
-        case 401:
-          // Ví dụ: Logout user nếu token hết hạn
-          console.error('Unauthorized - Vui lòng đăng nhập lại.');
+      // Nếu gặp lỗi 401 Unauthorized và request chưa từng được retry
+      if (status === 401 && !originalRequest._retry) {
+        // Tránh lặp vô tận nếu API bị lỗi chính là đăng nhập hoặc làm mới token
+        if (originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/refresh')) {
           localStorage.removeItem('accessToken');
-          // Bạn có thể redirect user về trang login ở đây nếu cần thiết
-          break;
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('role');
+          localStorage.removeItem('username');
+          return Promise.reject(error);
+        }
+
+        // Nếu đang trong quá trình refresh token từ request trước đó, xếp request hiện tại vào hàng đợi
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((token) => {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              return axiosClient(originalRequest);
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          isRefreshing = false;
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('role');
+          localStorage.removeItem('username');
+          return Promise.reject(error);
+        }
+
+        try {
+          // Gọi API refresh token sử dụng axios gốc để tránh lặp interceptor
+          const res = await axios.post(
+            `${axiosClient.defaults.baseURL || 'http://localhost:8081/api/v1'}/auth/refresh`,
+            { refreshToken }
+          );
+
+          if (res.data && res.data.data) {
+            const { accessToken, refreshToken: newRefreshToken } = res.data.data;
+            
+            localStorage.setItem('accessToken', accessToken);
+            if (newRefreshToken) {
+              localStorage.setItem('refreshToken', newRefreshToken);
+            }
+
+            // Thiết lập header authorization mặc định mới cho axios
+            axiosClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+            // Giải phóng hàng đợi chờ
+            processQueue(null, accessToken);
+            isRefreshing = false;
+
+            // Thực hiện lại request ban đầu với token mới
+            return axiosClient(originalRequest);
+          } else {
+            throw new Error('Refresh token response invalid');
+          }
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          isRefreshing = false;
+          
+          // Hết hạn cả refresh token -> đăng xuất và chuyển hướng
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('role');
+          localStorage.removeItem('username');
+          
+          window.location.href = '/auth';
+          return Promise.reject(refreshError);
+        }
+      }
+
+      switch (status) {
         case 403:
           console.error('Forbidden - Bạn không có quyền truy cập tài nguyên này.');
           break;
