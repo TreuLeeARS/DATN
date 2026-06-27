@@ -124,8 +124,17 @@ export const ProductManager = () => {
 
   const handleProductSubmit = async (e) => {
     e.preventDefault()
-    if (!productForm.name.trim() || !productForm.baseprice || !productForm.categoryId) {
-      toast.error('Vui lòng điền đầy đủ các trường thông tin bắt buộc.')
+    const activeImageUrls = productForm.imageUrls.filter(url => url.trim() !== '')
+
+    if (
+      !productForm.name.trim() ||
+      !productForm.description.trim() ||
+      !productForm.baseprice ||
+      Number(productForm.baseprice) <= 0 ||
+      !productForm.categoryId ||
+      activeImageUrls.length === 0
+    ) {
+      toast.error('Vui lòng nhập đầy đủ thông tin: Tên, Mô tả, Giá cơ bản (> 0), Danh mục và ít nhất một Đường dẫn ảnh.')
       return
     }
 
@@ -134,7 +143,7 @@ export const ProductManager = () => {
       description: productForm.description,
       baseprice: Number(productForm.baseprice),
       categoryId: Number(productForm.categoryId),
-      imageUrls: productForm.imageUrls.filter(url => url.trim() !== '')
+      imageUrls: activeImageUrls
     }
 
     try {
