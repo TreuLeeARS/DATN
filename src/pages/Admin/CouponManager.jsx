@@ -48,7 +48,7 @@ export const CouponManager = () => {
       const res = await couponApi.getCouponsForAdmin({
         page: page,
         size: 10,
-        sort: 'couponId,desc'
+        sort: 'coupon_id,desc'
       })
       if (res && res.data) {
         setCoupons(res.data.content || [])

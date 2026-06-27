@@ -102,13 +102,13 @@ export const UserManager = () => {
           phone: searchPhone.trim() || undefined,
           page: page,
           size: 10,
-          sort: 'userId,desc'
+          sort: 'id,desc'
         })
       } else {
         res = await userApi.getUsers({
           page: page,
           size: 10,
-          sort: 'userId,desc'
+          sort: 'id,desc'
         })
       }
 
