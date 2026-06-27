@@ -18,6 +18,7 @@ export const ProductManager = () => {
   const [editingProduct, setEditingProduct] = useState(null) // null for create, object for edit
   const [editingVariant, setEditingVariant] = useState(null) // null for create, object for edit
   const [selectedProductForVariants, setSelectedProductForVariants] = useState(null) // product detail object
+  const [uploadingIndex, setUploadingIndex] = useState(null) // index of the image being uploaded
   
   // Custom Confirmation Modal state
   const [confirmModal, setConfirmModal] = useState({
@@ -122,6 +123,43 @@ export const ProductManager = () => {
   const handleProductInputChange = (e) => {
     const { name, value } = e.target
     setProductForm(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleLocalImageUpload = async (e, index) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    try {
+      setUploadingIndex(index)
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('https://api.escuelajs.co/api/v1/files/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!res.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const data = await res.json()
+      if (data && data.location) {
+        setProductForm(prev => {
+          const newUrls = [...prev.imageUrls]
+          newUrls[index] = data.location
+          return { ...prev, imageUrls: newUrls }
+        })
+        toast.success('Tải ảnh từ thiết bị lên thành công!')
+      } else {
+        throw new Error('Invalid response format')
+      }
+    } catch (err) {
+      console.error('Error uploading local image file:', err)
+      toast.error('Không thể tải ảnh lên thiết bị. Vui lòng thử lại.')
+    } finally {
+      setUploadingIndex(null)
+    }
   }
 
   const handleImageUrlChange = (index, value) => {
@@ -620,9 +658,34 @@ export const ProductManager = () => {
                         type="url"
                         value={url}
                         onChange={(e) => handleImageUrlChange(idx, e.target.value)}
-                        placeholder="https://example.com/image.jpg"
-                        className="flex-1 p-2 border border-gray-200 focus:outline-none focus:border-brand-charcoal font-sans"
+                        placeholder="https://example.com/image.jpg hoặc tải lên từ thiết bị..."
+                        className="flex-1 p-2 border border-gray-200 focus:outline-none focus:border-brand-charcoal font-sans text-xs"
                       />
+                      
+                      {/* Tải ảnh cục bộ từ thiết bị */}
+                      <label className="bg-brand-cream hover:bg-brand-blush/20 border border-gray-200 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-charcoal cursor-pointer flex-shrink-0 flex items-center justify-center gap-1.5 active:scale-95 transition-all h-[38px]">
+                        {uploadingIndex === idx ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-brand-charcoal border-t-transparent rounded-full animate-spin" />
+                            Tải...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5 text-brand-charcoal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            Tải lên
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleLocalImageUpload(e, idx)}
+                          className="hidden"
+                          disabled={uploadingIndex !== null}
+                        />
+                      </label>
+
                       <button
                         type="button"
                         onClick={() => handleRemoveImageField(idx)}
