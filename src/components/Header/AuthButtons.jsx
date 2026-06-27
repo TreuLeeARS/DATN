@@ -37,11 +37,23 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
 
       // Xóa giỏ hàng của tài khoản cũ khi đăng xuất
       localStorage.removeItem('pee_cart_items')
+      
+      // Xóa đường dẫn điều hướng tạm thời để tránh việc đăng nhập lại bằng tài khoản khác bị nhảy vào link cũ
+      sessionStorage.removeItem('authRedirectUrl')
 
       setIsLoggedIn(false)
       setUsername('')
       if (onCloseDrawer) onCloseDrawer()
-      window.location.reload() // Tải lại trang để cập nhật trạng thái xác thực toàn ứng dụng
+      
+      // Nếu đăng xuất tại trang riêng tư, chuyển hướng về trang chủ thay vì reload tại chỗ
+      const privatePaths = ['/my-orders', '/cart', '/admin']
+      const isAtPrivatePage = privatePaths.some(path => window.location.pathname.startsWith(path))
+      
+      if (isAtPrivatePage) {
+        window.location.href = '/'
+      } else {
+        window.location.reload()
+      }
     }
   }
 

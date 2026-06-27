@@ -76,6 +76,7 @@ export const AdminLayout = () => {
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('username')
       localStorage.removeItem('pee_cart_items')
+      sessionStorage.removeItem('authRedirectUrl')
       navigate('/')
       window.location.reload()
     }
