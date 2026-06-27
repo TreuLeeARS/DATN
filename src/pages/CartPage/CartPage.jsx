@@ -558,7 +558,7 @@ export const CartPage = () => {
                     <div className="flex justify-between text-brand-muted">
                       <span>Phí vận chuyển:</span>
                       <span className="font-semibold text-brand-charcoal">
-                        {selectedItemIds.length === 0 ? '0 đ' : (shippingFee === 0 ? 'Miễn phí' : formatVND(shippingFee))}
+                        {selectedItemIds.length === 0 ? '0 VND' : (shippingFee === 0 ? 'Miễn phí' : formatVND(shippingFee))}
                       </span>
                     </div>
                     

@@ -553,56 +553,7 @@ export const ShopPage = () => {
                 </div>
               </div>
 
-              {/* 3. Color swatches */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-3">
-                  Màu sắc
-                </label>
-                <div className="flex flex-wrap gap-2.5">
-                  {colorOptions.map((color) => (
-                    <button
-                      key={color.hex}
-                      onClick={() => setSelectedColor(selectedColor === color.hex ? null : color.hex)}
-                      className={`w-7 h-7 rounded-full border flex items-center justify-center transition-all ${
-                        selectedColor === color.hex
-                          ? 'border-brand-charcoal ring-2 ring-brand-blush scale-110'
-                          : 'border-gray-300 hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: color.hex }}
-                      title={color.label}
-                    >
-                      {selectedColor === color.hex && (
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ backgroundColor: color.hex === '#FFFFFF' ? '#000000' : '#FFFFFF' }}
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              {/* 4. Sizes */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-3">
-                  Kích cỡ (Size)
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {sizeOptions.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(selectedSize === size ? null : size)}
-                      className={`py-1.5 px-3 border text-xs font-semibold rounded-lg text-center transition-all uppercase ${
-                        selectedSize === size
-                          ? 'border-brand-charcoal bg-brand-charcoal text-white'
-                          : 'border-gray-200 hover:border-brand-charcoal text-brand-charcoal'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Thương hiệu, Chất liệu, Dịp sử dụng bộ lọc đã bỏ theo yêu cầu */}
 
