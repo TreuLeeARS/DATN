@@ -60,27 +60,29 @@ export const UserManager = () => {
       if (res && res.data) {
         // Handle various response types (e.g. { ADMIN: 2, STAFF: 1, USER: 10 } or lowercase keys)
         const rawCounts = res.data
-        const counts = {
-          admin: 0,
-          staff: 0,
-          customer: 0,
-          total: 0
-        }
-
-        Object.keys(rawCounts).forEach(key => {
-          const keyUpper = key.toUpperCase()
-          const val = Number(rawCounts[key]) || 0
-          if (keyUpper.includes('ADMIN')) {
-            counts.admin += val
-          } else if (keyUpper.includes('STAFF') || keyUpper.includes('EMPLOYEE')) {
-            counts.staff += val
-          } else {
-            counts.customer += val
+        if (typeof rawCounts === 'object' && rawCounts !== null && !Array.isArray(rawCounts)) {
+          const counts = {
+            admin: 0,
+            staff: 0,
+            customer: 0,
+            total: 0
           }
-          counts.total += val
-        })
 
-        setRolesCount(counts)
+          Object.keys(rawCounts).forEach(key => {
+            const keyUpper = key.toUpperCase()
+            const val = Number(rawCounts[key]) || 0
+            if (keyUpper.includes('ADMIN')) {
+              counts.admin += val
+            } else if (keyUpper.includes('STAFF') || keyUpper.includes('EMPLOYEE')) {
+              counts.staff += val
+            } else {
+              counts.customer += val
+            }
+            counts.total += val
+          })
+
+          setRolesCount(counts)
+        }
       }
     } catch (err) {
       console.error('Error fetching roles statistics:', err)
@@ -113,13 +115,36 @@ export const UserManager = () => {
       }
 
       if (res && res.data) {
+        let fetchedUsers = [];
         if (Array.isArray(res.data)) {
-          setUsers(res.data);
+          fetchedUsers = res.data;
+          setUsers(fetchedUsers);
           setTotalPages(1);
         } else {
-          setUsers(res.data.content || []);
+          fetchedUsers = res.data.content || [];
+          setUsers(fetchedUsers);
           setTotalPages(res.data.totalPages || 1);
         }
+
+        // Calculate roles count dynamically from loaded user list
+        let adminCount = 0;
+        let staffCount = 0;
+        let customerCount = 0;
+        fetchedUsers.forEach(u => {
+          if (hasRole(u, 'ADMIN')) {
+            adminCount++;
+          } else if (hasRole(u, 'STAFF')) {
+            staffCount++;
+          } else {
+            customerCount++;
+          }
+        });
+        setRolesCount({
+          admin: adminCount,
+          staff: staffCount,
+          customer: customerCount,
+          total: fetchedUsers.length
+        });
       }
     } catch (err) {
       console.error('Error loading user list:', err)
