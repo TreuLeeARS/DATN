@@ -3,6 +3,7 @@ import { formatVND } from '../../utils/price.js'
 import toast from 'react-hot-toast'
 import productApi from '../../api/productApi'
 import categoryApi from '../../api/categoryApi'
+import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 
 export const ProductManager = () => {
   const [products, setProducts] = useState([])
@@ -17,6 +18,27 @@ export const ProductManager = () => {
   const [editingProduct, setEditingProduct] = useState(null) // null for create, object for edit
   const [editingVariant, setEditingVariant] = useState(null) // null for create, object for edit
   const [selectedProductForVariants, setSelectedProductForVariants] = useState(null) // product detail object
+  
+  // Custom Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    isDestructive: false
+  })
+  const openConfirm = (title, message, onConfirm, isDestructive = false) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm()
+        setConfirmModal(prev => ({ ...prev, isOpen: false }))
+      },
+      isDestructive
+    })
+  }
 
   // Form states
   const [productForm, setProductForm] = useState({
@@ -162,19 +184,25 @@ export const ProductManager = () => {
     }
   }
 
-  const handleDeleteProduct = async (id) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa mềm sản phẩm này?')) return
-    try {
-      await productApi.deleteProduct(id)
-      toast.success('Đã xóa mềm sản phẩm thành công!')
-      fetchProducts()
-      if (selectedProductForVariants?.productId === id) {
-        setSelectedProductForVariants(null)
-      }
-    } catch (err) {
-      console.error('Error deleting product:', err)
-      toast.error('Lỗi khi xóa sản phẩm.')
-    }
+  const handleDeleteProduct = (id) => {
+    openConfirm(
+      'Xóa sản phẩm',
+      'Bạn có chắc chắn muốn xóa mềm sản phẩm này?',
+      async () => {
+        try {
+          await productApi.deleteProduct(id)
+          toast.success('Đã xóa mềm sản phẩm thành công!')
+          fetchProducts()
+          if (selectedProductForVariants?.productId === id) {
+            setSelectedProductForVariants(null)
+          }
+        } catch (err) {
+          console.error('Error deleting product:', err)
+          toast.error('Lỗi khi xóa sản phẩm.')
+        }
+      },
+      true
+    )
   }
 
   const handleRestoreProduct = async (id) => {
@@ -263,17 +291,23 @@ export const ProductManager = () => {
     }
   }
 
-  const handleDeleteVariant = async (variantId) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa biến thể này?')) return
-    try {
-      const prodId = selectedProductForVariants.productId
-      await productApi.deleteVariant(prodId, variantId)
-      toast.success('Đã xóa biến thể thành công!')
-      handleSelectProductVariants({ productId: prodId })
-    } catch (err) {
-      console.error('Error deleting variant:', err)
-      toast.error('Lỗi khi xóa biến thể.')
-    }
+  const handleDeleteVariant = (variantId) => {
+    openConfirm(
+      'Xóa biến thể',
+      'Bạn có chắc chắn muốn xóa biến thể này?',
+      async () => {
+        try {
+          const prodId = selectedProductForVariants.productId
+          await productApi.deleteVariant(prodId, variantId)
+          toast.success('Đã xóa biến thể thành công!')
+          handleSelectProductVariants({ productId: prodId })
+        } catch (err) {
+          console.error('Error deleting variant:', err)
+          toast.error('Lỗi khi xóa biến thể.')
+        }
+      },
+      true
+    )
   }
 
   return (
@@ -721,6 +755,15 @@ export const ProductManager = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        isDestructive={confirmModal.isDestructive}
+      />
 
     </div>
   )

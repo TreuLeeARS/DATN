@@ -6,6 +6,7 @@ import { Header } from '../../components/Header/Header.jsx'
 import { Footer } from '../../components/Footer/Footer.jsx'
 import orderApi from '../../api/orderApi'
 import paymentApi from '../../api/paymentApi'
+import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 
 export const MyOrders = () => {
   const navigate = useNavigate()
@@ -15,6 +16,27 @@ export const MyOrders = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [expandedOrderId, setExpandedOrderId] = useState(null)
   const [paymentStatuses, setPaymentStatuses] = useState({}) // orderId -> status text
+
+  // Custom Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    isDestructive: false
+  })
+  const openConfirm = (title, message, onConfirm, isDestructive = false) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm()
+        setConfirmModal(prev => ({ ...prev, isOpen: false }))
+      },
+      isDestructive
+    })
+  }
 
   // 1. Kiểm tra trạng thái đăng nhập
   useEffect(() => {
@@ -70,17 +92,23 @@ export const MyOrders = () => {
     }
   }
 
-  const handleCancelMyOrder = async (orderId) => {
-    if (!confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return
-    try {
-      await orderApi.cancelOrder(orderId)
-      toast.success('Hủy đơn hàng thành công!')
-      // Cập nhật lại trạng thái đơn hàng trên UI
-      setOrders(prev => prev.map(o => o.orderId === orderId ? { ...o, status: 'CANCELLED' } : o))
-    } catch (err) {
-      console.error('Error cancelling order:', err)
-      toast.error('Không thể hủy đơn hàng này. Vui lòng liên hệ hỗ trợ!')
-    }
+  const handleCancelMyOrder = (orderId) => {
+    openConfirm(
+      'Hủy đơn hàng',
+      'Bạn có chắc chắn muốn hủy đơn hàng này?',
+      async () => {
+        try {
+          await orderApi.cancelOrder(orderId)
+          toast.success('Hủy đơn hàng thành công!')
+          // Cập nhật lại trạng thái đơn hàng trên UI
+          setOrders(prev => prev.map(o => o.orderId === orderId ? { ...o, status: 'CANCELLED' } : o))
+        } catch (err) {
+          console.error('Error cancelling order:', err)
+          toast.error('Không thể hủy đơn hàng này. Vui lòng liên hệ hỗ trợ!')
+        }
+      },
+      true
+    )
   }
 
   const toggleExpandOrder = (orderId) => {
@@ -313,6 +341,15 @@ export const MyOrders = () => {
       </main>
 
       <Footer />
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        isDestructive={confirmModal.isDestructive}
+      />
     </>
   )
 }

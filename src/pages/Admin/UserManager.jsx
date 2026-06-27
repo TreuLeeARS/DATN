@@ -1,12 +1,34 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import userApi from '../../api/userApi'
+import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 
 export const UserManager = () => {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
+
+  // Custom Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    isDestructive: false
+  })
+  const openConfirm = (title, message, onConfirm, isDestructive = false) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm()
+        setConfirmModal(prev => ({ ...prev, isOpen: false }))
+      },
+      isDestructive
+    })
+  }
 
   // Statistics State
   const [rolesCount, setRolesCount] = useState({
@@ -192,45 +214,59 @@ export const UserManager = () => {
     )
   }
 
-  // Upgrade user role actions
-  const handleAssignAdmin = async (user) => {
-    if (!confirm(`Xác nhận nâng quyền ADMIN cho tài khoản "${user.username}"?`)) return
-    try {
-      await userApi.setAdmin({ username: user.username })
-      toast.success(`Đã nâng cấp quyền ADMIN cho ${user.username} thành công!`)
-      fetchUsers()
-      fetchRolesCount()
-    } catch (err) {
-      console.error('Error assigning admin role:', err)
-      toast.error(err.response?.data?.message || 'Lỗi xảy ra khi cấp quyền ADMIN.')
-    }
+  const handleAssignAdmin = (user) => {
+    openConfirm(
+      'Cấp quyền Admin',
+      `Xác nhận nâng quyền ADMIN cho tài khoản "${user.username}"?`,
+      async () => {
+        try {
+          await userApi.setAdmin({ username: user.username })
+          toast.success(`Đã nâng cấp quyền ADMIN cho ${user.username} thành công!`)
+          fetchUsers()
+          fetchRolesCount()
+        } catch (err) {
+          console.error('Error assigning admin role:', err)
+          toast.error(err.response?.data?.message || 'Lỗi xảy ra khi cấp quyền ADMIN.')
+        }
+      }
+    )
   }
 
-  const handleAssignStaff = async (user) => {
-    if (!confirm(`Xác nhận gán quyền STAFF cho tài khoản "${user.username}"?`)) return
-    try {
-      await userApi.setStaff({ username: user.username })
-      toast.success(`Đã cấp quyền nhân viên STAFF cho ${user.username} thành công!`)
-      fetchUsers()
-      fetchRolesCount()
-    } catch (err) {
-      console.error('Error assigning staff role:', err)
-      toast.error(err.response?.data?.message || 'Lỗi xảy ra khi cấp quyền STAFF.')
-    }
+  const handleAssignStaff = (user) => {
+    openConfirm(
+      'Cấp quyền Staff',
+      `Xác nhận gán quyền STAFF cho tài khoản "${user.username}"?`,
+      async () => {
+        try {
+          await userApi.setStaff({ username: user.username })
+          toast.success(`Đã cấp quyền nhân viên STAFF cho ${user.username} thành công!`)
+          fetchUsers()
+          fetchRolesCount()
+        } catch (err) {
+          console.error('Error assigning staff role:', err)
+          toast.error(err.response?.data?.message || 'Lỗi xảy ra khi cấp quyền STAFF.')
+        }
+      }
+    )
   }
 
-  // Lock/Delete user action
-  const handleLockUser = async (user) => {
-    if (!confirm(`Bạn có chắc chắn muốn khóa/xóa tài khoản "${user.username}"? Người dùng này sẽ không thể đăng nhập.`)) return
-    try {
-      await userApi.deleteUser(user.username)
-      toast.success(`Đã khóa tài khoản "${user.username}" thành công!`)
-      fetchUsers()
-      fetchRolesCount()
-    } catch (err) {
-      console.error('Error locking user:', err)
-      toast.error(err.response?.data?.message || 'Lỗi xảy ra khi khóa tài khoản.')
-    }
+  const handleLockUser = (user) => {
+    openConfirm(
+      'Khóa tài khoản',
+      `Bạn có chắc chắn muốn khóa/xóa tài khoản "${user.username}"? Người dùng này sẽ không thể đăng nhập.`,
+      async () => {
+        try {
+          await userApi.deleteUser(user.username)
+          toast.success(`Đã khóa tài khoản "${user.username}" thành công!`)
+          fetchUsers()
+          fetchRolesCount()
+        } catch (err) {
+          console.error('Error locking user:', err)
+          toast.error(err.response?.data?.message || 'Lỗi xảy ra khi khóa tài khoản.')
+        }
+      },
+      true
+    )
   }
 
   // Edit user modal helpers
@@ -605,6 +641,15 @@ export const UserManager = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        isDestructive={confirmModal.isDestructive}
+      />
 
     </div>
   )

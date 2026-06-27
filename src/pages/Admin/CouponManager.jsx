@@ -1,12 +1,34 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import couponApi from '../../api/couponApi'
+import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 
 export const CouponManager = () => {
   const [coupons, setCoupons] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
+
+  // Custom Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    isDestructive: false
+  })
+  const openConfirm = (title, message, onConfirm, isDestructive = false) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm()
+        setConfirmModal(prev => ({ ...prev, isOpen: false }))
+      },
+      isDestructive
+    })
+  }
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -88,16 +110,22 @@ export const CouponManager = () => {
   }
 
   // Delete Coupon handler
-  const handleDeleteCoupon = async (id, code) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa mã giảm giá "${code}"? Hành động này sẽ gỡ liên kết khỏi các đơn hàng liên quan.`)) return
-    try {
-      await couponApi.deleteCoupon(id)
-      toast.success(`Đã xóa thành công mã giảm giá "${code}"!`)
-      fetchCoupons()
-    } catch (err) {
-      console.error('Error deleting coupon:', err)
-      toast.error('Lỗi xảy ra khi xóa mã giảm giá.')
-    }
+  const handleDeleteCoupon = (id, code) => {
+    openConfirm(
+      'Xóa mã giảm giá',
+      `Bạn có chắc chắn muốn xóa mã giảm giá "${code}"? Hành động này sẽ gỡ liên kết khỏi các đơn hàng liên quan.`,
+      async () => {
+        try {
+          await couponApi.deleteCoupon(id)
+          toast.success(`Đã xóa thành công mã giảm giá "${code}"!`)
+          fetchCoupons()
+        } catch (err) {
+          console.error('Error deleting coupon:', err)
+          toast.error('Lỗi xảy ra khi xóa mã giảm giá.')
+        }
+      },
+      true
+    )
   }
 
   // Helper formats
@@ -359,6 +387,15 @@ export const CouponManager = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        isDestructive={confirmModal.isDestructive}
+      />
 
     </div>
   )

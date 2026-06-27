@@ -3,6 +3,7 @@ import { formatVND } from '../../utils/price.js'
 import toast from 'react-hot-toast'
 import orderApi from '../../api/orderApi'
 import paymentApi from '../../api/paymentApi'
+import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 
 export const OrderManager = () => {
   const [orders, setOrders] = useState([])
@@ -10,6 +11,27 @@ export const OrderManager = () => {
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [statusFilter, setStatusFilter] = useState('ALL') // 'ALL' | 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED'
+  
+  // Custom Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    isDestructive: false
+  })
+  const openConfirm = (title, message, onConfirm, isDestructive = false) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm()
+        setConfirmModal(prev => ({ ...prev, isOpen: false }))
+      },
+      isDestructive
+    })
+  }
   
   // Detail Modal state
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -137,19 +159,25 @@ export const OrderManager = () => {
     }
   }
 
-  const handleCancelOrder = async (orderId) => {
-    if (!confirm('Bạn có chắc chắn muốn HỦY đơn hàng này?')) return
-    try {
-      await orderApi.cancelOrder(orderId)
-      toast.success('Đơn hàng đã được hủy thành công!')
-      fetchOrders()
-      if (selectedOrder && selectedOrder.orderId === orderId) {
-        setSelectedOrder(prev => ({ ...prev, status: 'CANCELLED' }))
-      }
-    } catch (err) {
-      console.error('Error cancelling order:', err)
-      toast.error('Không thể hủy đơn hàng.')
-    }
+  const handleCancelOrder = (orderId) => {
+    openConfirm(
+      'Hủy đơn hàng',
+      'Bạn có chắc chắn muốn HỦY đơn hàng này?',
+      async () => {
+        try {
+          await orderApi.cancelOrder(orderId)
+          toast.success('Đơn hàng đã được hủy thành công!')
+          fetchOrders()
+          if (selectedOrder && selectedOrder.orderId === orderId) {
+            setSelectedOrder(prev => ({ ...prev, status: 'CANCELLED' }))
+          }
+        } catch (err) {
+          console.error('Error cancelling order:', err)
+          toast.error('Không thể hủy đơn hàng.')
+        }
+      },
+      true
+    )
   }
 
   // --- CONFIRM COD PAYMENT ---
@@ -484,6 +512,15 @@ export const OrderManager = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        isDestructive={confirmModal.isDestructive}
+      />
 
     </div>
   )
