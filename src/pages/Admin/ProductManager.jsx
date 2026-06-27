@@ -52,7 +52,7 @@ export const ProductManager = () => {
 
   const [variantForm, setVariantForm] = useState({
     size: 'S',
-    color: '',
+    color: 'Trắng',
     price: '',
     quantityInStock: 10,
     sku: ''
@@ -283,7 +283,7 @@ export const ProductManager = () => {
       setEditingVariant(null)
       setVariantForm({
         size: 'S',
-        color: '',
+        color: 'Trắng',
         price: selectedProductForVariants.baseprice,
         quantityInStock: 100,
         sku: `SKU-${selectedProductForVariants.productId}-${Date.now().toString().slice(-4)}`
@@ -748,15 +748,17 @@ export const ProductManager = () => {
                 </div>
                 <div className="space-y-1">
                   <label className="block font-semibold uppercase text-brand-muted text-[10px]">Màu sắc *</label>
-                  <input
-                    type="text"
+                  <select
                     name="color"
                     value={variantForm.color}
                     onChange={handleVariantInputChange}
-                    placeholder="Ví dụ: Hồng Blush, Charcoal"
-                    className="w-full p-2.5 border border-gray-200 focus:outline-none focus:border-brand-charcoal font-sans"
+                    className="w-full p-2.5 border border-gray-200 focus:outline-none focus:border-brand-charcoal font-sans bg-white"
                     required
-                  />
+                  >
+                    {['Trắng', 'Đen', 'Hồng', 'Be', 'Nâu', 'Xám', 'Đỏ', 'Xanh', 'Vàng', 'Charcoal'].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
