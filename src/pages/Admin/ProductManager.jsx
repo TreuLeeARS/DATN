@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatVND } from '../../utils/price.js'
 import toast from 'react-hot-toast'
 import productApi from '../../api/productApi'
 import categoryApi from '../../api/categoryApi'
@@ -339,7 +340,7 @@ export const ProductManager = () => {
                           <p className="text-[10px] text-brand-muted mt-0.5">ID: {p.productId}</p>
                         </td>
                         <td className="py-3.5 px-4 font-semibold text-brand-charcoal">
-                          {(p.baseprice / 1000).toFixed(0)}k
+                          {formatVND(p.baseprice)}
                         </td>
                         <td className="py-3.5 px-4 text-brand-muted">
                           {p.categoryName || 'Không có'}
@@ -414,7 +415,7 @@ export const ProductManager = () => {
               <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-brand-charcoal">Biến thể của: {selectedProductForVariants.name}</h3>
-                  <p className="text-[10px] text-brand-muted mt-1">Danh mục: {selectedProductForVariants.categoryName} • Giá cơ bản: {(selectedProductForVariants.baseprice / 1000).toFixed(0)}k</p>
+                  <p className="text-[10px] text-brand-muted mt-1">Danh mục: {selectedProductForVariants.categoryName} • Giá cơ bản: {formatVND(selectedProductForVariants.baseprice)}</p>
                 </div>
                 <button
                   onClick={() => handleOpenVariantModal()}
@@ -446,7 +447,7 @@ export const ProductManager = () => {
                         <tr key={v.productVariantId} className="hover:bg-gray-50/50">
                           <td className="py-3 font-semibold text-brand-charcoal">{v.size}</td>
                           <td className="py-3 text-brand-muted">{v.color}</td>
-                          <td className="py-3 font-semibold text-brand-charcoal">{(v.price / 1000).toFixed(0)}k</td>
+                          <td className="py-3 font-semibold text-brand-charcoal">{formatVND(v.price)}</td>
                           <td className="py-3 text-center">
                             <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
                               v.quantityInStock <= 10 

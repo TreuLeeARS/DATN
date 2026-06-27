@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatVND } from '../../utils/price.js'
 import toast from 'react-hot-toast'
 import orderApi from '../../api/orderApi'
 import paymentApi from '../../api/paymentApi'
@@ -265,7 +266,7 @@ export const OrderManager = () => {
                       <td className="py-4 px-4 text-brand-muted">{shipInfo.phone}</td>
                       <td className="py-4 px-4 text-brand-muted">{orderDate}</td>
                       <td className="py-4 px-4 font-semibold text-brand-charcoal">
-                        {(o.totalAmount / 1000).toFixed(0)}k
+                        {formatVND(o.totalAmount)}
                       </td>
                       <td className="py-4 px-4 text-center">
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-semibold border uppercase tracking-wider ${getStatusBadgeClass(o.status)}`}>
@@ -355,7 +356,7 @@ export const OrderManager = () => {
                     <>
                       <p><span className="font-semibold text-brand-muted">Phương thức:</span> {paymentInfo.paymentMethod || 'COD'}</p>
                       <p><span className="font-semibold text-brand-muted">Mã thanh toán:</span> ID_{paymentInfo.paymentId}</p>
-                      <p><span className="font-semibold text-brand-muted">Tổng thanh toán:</span> {(paymentInfo.amount / 1000).toFixed(0)}k</p>
+                      <p><span className="font-semibold text-brand-muted">Tổng thanh toán:</span> {formatVND(paymentInfo.amount)}</p>
                       <p className="flex items-center gap-1.5">
                         <span className="font-semibold text-brand-muted">Trạng thái:</span>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
@@ -397,8 +398,8 @@ export const OrderManager = () => {
                         <p className="text-[10px] text-brand-muted mt-0.5">Phân loại: {item.color} / Size {item.size}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-brand-charcoal">{(item.price / 1000).toFixed(0)}k x {item.quantity}</p>
-                        <p className="text-[10px] text-brand-muted font-bold mt-0.5">Tổng: {(item.subtotal / 1000).toFixed(0)}k</p>
+                        <p className="font-semibold text-brand-charcoal">{formatVND(item.price)} x {item.quantity}</p>
+                        <p className="text-[10px] text-brand-muted font-bold mt-0.5">Tổng: {formatVND(item.subtotal)}</p>
                       </div>
                     </div>
                   ))
@@ -413,7 +414,7 @@ export const OrderManager = () => {
               <div className="w-52 space-y-1.5 text-right">
                 <p className="flex justify-between">
                   <span className="text-brand-muted">Thành tiền:</span>
-                  <span>{(selectedOrder.totalAmount / 1000).toFixed(0)}k</span>
+                  <span>{formatVND(selectedOrder.totalAmount)}</span>
                 </p>
                 {selectedOrder.couponCode && (
                   <p className="flex justify-between text-brand-blush">
@@ -423,7 +424,7 @@ export const OrderManager = () => {
                 )}
                 <p className="flex justify-between text-sm font-bold text-brand-charcoal border-t border-gray-100 pt-1.5">
                   <span className="text-brand-muted">Tổng thu:</span>
-                  <span>{(selectedOrder.totalAmount / 1000).toFixed(0)}k</span>
+                  <span>{formatVND(selectedOrder.totalAmount)}</span>
                 </p>
               </div>
             </div>

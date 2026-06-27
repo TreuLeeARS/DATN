@@ -1,4 +1,5 @@
 import { useState, useLayoutEffect, useRef, useEffect } from 'react'
+import { formatVND } from '../../utils/price.js'
 import { Link, useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import toast from 'react-hot-toast'
@@ -237,7 +238,7 @@ export const CartPage = () => {
                 </div>
                 <div className="flex justify-between border-t border-gray-200/60 pt-3 font-semibold">
                   <span className="text-sm text-brand-charcoal">Tổng cộng:</span>
-                  <span className="text-base text-brand-charcoal">{(orderInfo.total / 1000).toFixed(0)}kđ</span>
+                  <span className="text-base text-brand-charcoal">{formatVND(orderInfo.total)}</span>
                 </div>
               </div>
 
@@ -495,7 +496,7 @@ export const CartPage = () => {
                           {/* Price and controls */}
                           <div className="flex items-center justify-between mt-2">
                             <span className="font-semibold text-brand-charcoal text-sm">
-                              {(item.price / 1000).toFixed(0)}k
+                              {formatVND(item.price)}
                             </span>
 
                             {/* Quantity control */}
@@ -544,32 +545,32 @@ export const CartPage = () => {
                   <div className="border-t border-gray-100 pt-4 flex flex-col gap-2.5 text-sm">
                     <div className="flex justify-between text-brand-muted">
                       <span>Tạm tính:</span>
-                      <span className="font-semibold text-brand-charcoal">{(selectedTotal / 1000).toFixed(0)}kđ</span>
+                      <span className="font-semibold text-brand-charcoal">{formatVND(selectedTotal)}</span>
                     </div>
 
                     {discountAmount > 0 && (
                       <div className="flex justify-between text-green-600 font-medium">
                         <span>Giảm giá (PEESTART15 - 15%):</span>
-                        <span>-{(discountAmount / 1000).toFixed(0)}kđ</span>
+                        <span>-{formatVND(discountAmount)}</span>
                       </div>
                     )}
 
                     <div className="flex justify-between text-brand-muted">
                       <span>Phí vận chuyển:</span>
                       <span className="font-semibold text-brand-charcoal">
-                        {selectedItemIds.length === 0 ? '0kđ' : (shippingFee === 0 ? 'Miễn phí' : `${(shippingFee / 1000).toFixed(0)}kđ`)}
+                        {selectedItemIds.length === 0 ? '0 đ' : (shippingFee === 0 ? 'Miễn phí' : formatVND(shippingFee))}
                       </span>
                     </div>
                     
                     {shippingFee > 0 && selectedTotal > 0 && (
                       <p className="text-[10px] text-brand-muted italic text-left">
-                        * Mẹo: Mua thêm <span className="font-bold text-brand-charcoal">{((1000000 - selectedTotal) / 1000).toFixed(0)}kđ</span> nữa để được miễn phí vận chuyển!
+                        * Mẹo: Mua thêm <span className="font-bold text-brand-charcoal">{formatVND(1000000 - selectedTotal)}</span> nữa để được miễn phí vận chuyển!
                       </p>
                     )}
 
                     <div className="border-t border-gray-150 pt-3 flex justify-between font-bold text-base text-brand-charcoal">
                       <span>Tổng cộng:</span>
-                      <span>{(selectedItemIds.length === 0 ? 0 : finalTotal / 1000).toFixed(0)}kđ</span>
+                      <span>{formatVND(selectedItemIds.length === 0 ? 0 : finalTotal)}</span>
                     </div>
                   </div>
 

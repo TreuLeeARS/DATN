@@ -1,4 +1,5 @@
 import { useState, useLayoutEffect, useRef, useMemo, useEffect } from 'react'
+import { formatVND } from '../../utils/price.js'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import gsap from 'gsap'
 import toast from 'react-hot-toast'
@@ -610,7 +611,7 @@ export const ShopPage = () => {
                 <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-brand-muted mb-3">
                   <span>Giá tối đa</span>
                   <span className="text-brand-charcoal font-semibold normal-case">
-                    {(maxPrice / 1000).toFixed(0)}k
+                    {formatVND(maxPrice)}
                   </span>
                 </div>
                 <input
@@ -792,12 +793,12 @@ export const ShopPage = () => {
                             {/* Price */}
                             <div className="flex items-center gap-3">
                               <span className="font-bold text-brand-charcoal text-lg">
-                                {(product.price / 1000).toFixed(0)}k
+                                {formatVND(product.price)}
                               </span>
                               {product.originalPrice && (
                                 <>
                                   <span className="text-xs text-brand-muted line-through">
-                                    {(product.originalPrice / 1000).toFixed(0)}k
+                                    {formatVND(product.originalPrice)}
                                   </span>
                                   <span className="text-[10px] font-bold bg-brand-blush text-brand-charcoal px-1.5 py-0.5 rounded">
                                     -{discount}%

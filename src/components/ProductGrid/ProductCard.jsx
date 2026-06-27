@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, useEffect } from 'react'
+import { formatVND } from '../../utils/price.js'
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { ProductBadge } from './ProductBadge.jsx'
@@ -179,12 +180,12 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
           {/* Price */}
           <div className="flex items-center gap-3">
             <span className="font-semibold text-brand-charcoal">
-              {(product.price / 1000).toFixed(0)}k
+              {formatVND(product.price)}
             </span>
             {product.originalPrice && (
               <>
                 <span className="text-xs text-brand-muted line-through">
-                  {(product.originalPrice / 1000).toFixed(0)}k
+                  {formatVND(product.originalPrice)}
                 </span>
                 <span className="text-xs bg-brand-blush text-brand-charcoal px-2 py-1 rounded">
                   -{discount}%
@@ -274,12 +275,12 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
                 {/* Price Section */}
                 <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
                   <span className="font-bold text-brand-charcoal text-2xl">
-                    {(product.price / 1000).toFixed(0)}k
+                    {formatVND(product.price)}
                   </span>
                   {product.originalPrice && (
                     <>
                       <span className="text-sm text-brand-muted line-through">
-                        {(product.originalPrice / 1000).toFixed(0)}k
+                        {formatVND(product.originalPrice)}
                       </span>
                       <span className="text-xs font-bold bg-brand-blush text-brand-charcoal px-2 py-0.5 rounded shadow-sm">
                         -{discount}%

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatVND } from '../../utils/price.js'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Header } from '../../components/Header/Header.jsx'
@@ -195,7 +196,7 @@ export const MyOrders = () => {
                       <div className="flex items-center justify-between sm:justify-end gap-6">
                         <div className="text-right">
                           <p className="text-xs text-brand-muted uppercase">Tổng thanh toán</p>
-                          <p className="font-bold text-base text-brand-charcoal">{(o.totalAmount / 1000).toFixed(0)}k</p>
+                          <p className="font-bold text-base text-brand-charcoal">{formatVND(o.totalAmount)}</p>
                         </div>
                         
                         {/* Dropdown toggle indicator */}
@@ -252,7 +253,7 @@ export const MyOrders = () => {
                                   <p className="text-[10px] text-brand-muted mt-0.5">Phân loại: {item.color} / Size {item.size}</p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-bold text-brand-charcoal">{(item.price / 1000).toFixed(0)}k x {item.quantity}</p>
+                                  <p className="font-bold text-brand-charcoal">{formatVND(item.price)} x {item.quantity}</p>
                                 </div>
                               </div>
                             ))}
