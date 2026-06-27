@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
 import toast from 'react-hot-toast'
+import popupApi from '../../api/popupApi'
 
 export const ShopPromptModal = () => {
   const navigate = useNavigate()
@@ -9,6 +10,33 @@ export const ShopPromptModal = () => {
   const [show, setShow] = useState(false)
   const modalRef = useRef(null)
   const overlayRef = useRef(null)
+
+  const [popupData, setPopupData] = useState({
+    header: 'Ưu Đãi Đặc Biệt 🎁',
+    title: 'Tặng bạn món quà nhỏ làm quen!',
+    description: 'Tặng ngay mã giảm giá 15% cho đơn hàng đầu tiên của bạn tại OUTTA. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.'
+  })
+
+  // Tải thông báo popup từ DB nếu có
+  useEffect(() => {
+    const fetchActivePopup = async () => {
+      try {
+        const res = await popupApi.getPopups()
+        if (res && res.data && res.data.length > 0) {
+          // Lấy popup đầu tiên làm đại diện
+          const activePopup = res.data[0]
+          setPopupData({
+            header: activePopup.header || 'Ưu Đãi Đặc Biệt 🎁',
+            title: activePopup.title || 'Tặng bạn món quà nhỏ làm quen!',
+            description: activePopup.description || 'Tặng ngay mã giảm giá 15% cho đơn hàng đầu tiên của bạn tại OUTTA. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.'
+          })
+        }
+      } catch (err) {
+        // Bỏ qua lỗi 403 hoặc lỗi mạng và chạy bình thường với fallback mặc định
+      }
+    }
+    fetchActivePopup()
+  }, [])
 
   // Chế độ demo: Chỉ kích hoạt thủ công khi URL có tham số ?demo=true
   const searchParams = new URLSearchParams(location.search)
@@ -176,13 +204,13 @@ export const ShopPromptModal = () => {
           <div className="absolute top-0 right-0 w-24 h-24 bg-brand-blush/10 rounded-full blur-xl pointer-events-none" />
           
           <span className="text-[10px] uppercase font-bold tracking-widest text-brand-blush mb-1 block">
-            Ưu Đãi Đặc Biệt 🎁
+            {popupData.header}
           </span>
           <h3 className="font-display text-2xl font-bold text-brand-charcoal mb-3 pr-6 leading-tight">
-            Tặng bạn món quà nhỏ làm quen!
+            {popupData.title}
           </h3>
           <p className="text-brand-muted text-sm leading-relaxed mb-6">
-            Tặng ngay mã giảm giá <span className="font-bold text-brand-charcoal">15%</span> cho đơn hàng đầu tiên của bạn tại <span className="font-bold text-brand-charcoal">OUTTA</span>. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.
+            {popupData.description}
           </p>
 
           {/* Action buttons */}
