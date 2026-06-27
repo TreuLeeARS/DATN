@@ -101,6 +101,15 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0
 
+  const isOutOfStock = (() => {
+    if (selectedColor === null || !selectedSize) return false;
+    const selColorName = product.colors[selectedColor]?.name;
+    const variant = product.variants?.find(
+      v => v.color?.toLowerCase() === selColorName?.toLowerCase() && v.size === selectedSize
+    );
+    return !variant || (variant.quantityInStock || 0) <= 0;
+  })();
+
   return (
     <>
       <div
@@ -339,6 +348,33 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
                   </div>
                 </div>
 
+                {/* Stock Level Display */}
+                {selectedColor !== null && selectedSize && (
+                  <div className="mb-6 bg-brand-cream/35 p-3.5 border border-brand-charcoal/5 flex justify-between items-center text-xs">
+                    <span className="font-semibold text-brand-charcoal uppercase tracking-wider">Tình trạng kho</span>
+                    {(() => {
+                      const selColorName = product.colors[selectedColor]?.name;
+                      const variant = product.variants?.find(
+                        v => v.color?.toLowerCase() === selColorName?.toLowerCase() && v.size === selectedSize
+                      );
+                      
+                      if (!variant) {
+                        return <span className="text-red-500 font-bold uppercase tracking-wider">Ngừng kinh doanh</span>;
+                      }
+                      
+                      const stock = variant.quantityInStock || 0;
+                      if (stock <= 0) {
+                        return <span className="text-red-600 font-bold uppercase tracking-wider">Tạm hết hàng</span>;
+                      }
+                      return (
+                        <span className="text-brand-charcoal font-medium">
+                          Còn lại <strong className="font-bold text-sm text-brand-charcoal">{stock}</strong> sản phẩm
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
+
                 {/* Warning */}
                 {showWarning && (
                   <p className="text-xs text-red-500 font-semibold mb-2 animate-pulse">
@@ -350,6 +386,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
               {/* Purchase Buttons */}
               <div className="flex gap-3 pt-4 border-t border-gray-100 mt-auto">
                 <button
+                  disabled={isOutOfStock}
                   onClick={() => {
                     if (selectedColor === null || !selectedSize) { setShowWarning(true); return }
                     onAddToCart({
@@ -360,11 +397,14 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
                     })
                     setIsModalOpen(false)
                   }}
-                  className="flex-1 border border-brand-charcoal text-brand-charcoal py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-brand-cream transition-colors active:scale-[0.98] cursor-pointer"
+                  className={`flex-1 border border-brand-charcoal text-brand-charcoal py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-brand-cream transition-colors active:scale-[0.98] cursor-pointer ${
+                    isOutOfStock ? 'opacity-35 cursor-not-allowed hover:bg-transparent' : ''
+                  }`}
                 >
-                  Thêm vào giỏ
+                  {isOutOfStock ? 'Hết hàng' : 'Thêm vào giỏ'}
                 </button>
                 <button
+                  disabled={isOutOfStock}
                   onClick={() => {
                     if (selectedColor === null || !selectedSize) { setShowWarning(true); return }
                     onBuyNow({
@@ -375,9 +415,11 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
                     })
                     setIsModalOpen(false)
                   }}
-                  className="flex-1 bg-brand-charcoal text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-brand-dark transition-colors active:scale-[0.98] cursor-pointer"
+                  className={`flex-1 bg-brand-charcoal text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-brand-dark transition-colors active:scale-[0.98] cursor-pointer ${
+                    isOutOfStock ? 'opacity-35 cursor-not-allowed hover:bg-brand-charcoal' : ''
+                  }`}
                 >
-                  Mua Ngay
+                  {isOutOfStock ? 'Hết hàng' : 'Mua Ngay'}
                 </button>
               </div>
 

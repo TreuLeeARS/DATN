@@ -133,6 +133,7 @@ export const mapDbProduct = (dbProduct) => {
     description: dbProduct.description || `Sản phẩm ${name} cao cấp mang phong cách thiết kế tối giản, chất liệu bền bỉ và phom dáng chuẩn mực.`,
     brand,
     material,
-    occasion
+    occasion,
+    variants: dbProduct.variants || []
   };
 };
