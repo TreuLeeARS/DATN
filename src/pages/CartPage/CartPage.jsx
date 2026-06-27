@@ -164,7 +164,7 @@ export const CartPage = () => {
             quantity: item.quantity,
             selectedSize: item.size,
             selectedColor: item.color,
-            images: ['https://images.unsplash.com/photo-1609357605129-26f69add5d6e?q=80&w=600&auto=format&fit=crop']
+            images: ['https://placehold.co/600x600/faf8f6/a3a3c2?text=No+Image']
           })),
           discount: orderData.discountValue,
           shippingFee: 0

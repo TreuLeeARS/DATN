@@ -330,7 +330,7 @@ export const ProductManager = () => {
                       >
                         <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                           <img 
-                            src={p.imageUrls && p.imageUrls[0] ? p.imageUrls[0] : 'https://images.unsplash.com/photo-1609357605129-26f69add5d6e?q=80&w=200'} 
+                            src={p.imageUrls && p.imageUrls[0] ? p.imageUrls[0] : 'https://placehold.co/200x200/faf8f6/a3a3c2?text=No+Image'} 
                             alt="" 
                             className="w-10 h-10 object-cover border border-gray-100 hover:scale-110 transition-transform duration-200"
                           />

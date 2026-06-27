@@ -38,7 +38,7 @@ export const useCart = () => {
             selectedSize: item.size,
             selectedColor: item.color,
             selectedColorHex: selectedColorHex,
-            images: item.images && item.images.length > 0 ? item.images : ['https://images.unsplash.com/photo-1609357605129-26f69add5d6e?q=80&w=600&auto=format&fit=crop'],
+            images: item.images && item.images.length > 0 ? item.images : ['https://placehold.co/600x600/faf8f6/a3a3c2?text=No+Image'],
             subtotal: item.subtotal
           }
         })

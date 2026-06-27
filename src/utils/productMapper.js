@@ -37,11 +37,9 @@ const CATEGORY_SLUG_MAP = {
   'phụ kiện': 'accessories'
 };
 
-// Hình ảnh thời trang cao cấp làm hình ảnh mặc định khi sản phẩm không có ảnh
+// Hình ảnh thời trang mặc định khi sản phẩm không có ảnh
 const DEFAULT_IMAGES = [
-  'https://images.unsplash.com/photo-1609357605129-26f69add5d6e?q=80&w=600&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=600&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?q=80&w=600&auto=format&fit=crop'
+  'https://placehold.co/600x600/faf8f6/a3a3c2?text=No+Image'
 ];
 
 /**
