@@ -88,6 +88,7 @@ export const ShopPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
 
   // State bộ lọc và sắp xếp
+  const [searchVal, setSearchVal] = useState('') // Local input value for debouncing
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedColor, setSelectedColor] = useState(null)
@@ -95,6 +96,15 @@ export const ShopPage = () => {
   const [maxPrice, setMaxPrice] = useState(2000000)
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+
+  // BIZ-06 Debounce Effect
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      setSearchQuery(searchVal)
+    }, 300)
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchVal])
 
   // Bộ lọc mở rộng
   const [selectedBrands, setSelectedBrands] = useState([])
@@ -215,71 +225,68 @@ export const ShopPage = () => {
     // 1.5. URL Filter (new / sale)
     const filterParam = searchParams.get('filter')
     if (filterParam === 'new') {
-      result = result.filter(p => p.badge === 'new')
+      // Không lọc bớt sản phẩm, chỉ dựa vào cơ chế sắp xếp 'newest' (ID giảm dần) để hiển thị hàng mới lên đầu
     } else if (filterParam === 'sale') {
       result = result.filter(p => p.badge === 'sale' || (p.originalPrice && p.originalPrice > p.price))
     }
 
     // 2. Category
     if (selectedCategory !== 'all') {
-      const targetCategoryStr = (typeof selectedCategory === 'string' ? selectedCategory : selectedCategory.name)
-        .replace(/\+/g, ' ')
-        .toLowerCase()
-        .normalize('NFC')
-        
-      result = result.filter(p => {
-        const productCategoryLower = p.category.toLowerCase().normalize('NFC')
-        const productNameLower = p.name.toLowerCase().normalize('NFC')
-        
-        // 1. So khớp trực tiếp nhóm danh mục lớn / trung
-        const categoryMapping = {
-          'quần áo': ['tops', 'bottoms', 'dresses', 'sets', 'outerwear'],
-          'giày & túi': ['shoes', 'bags'],
-          'phụ kiện': ['accessories'],
-          'áo': ['tops'],
-          'quần': ['bottoms'],
-          'váy & đầm': ['dresses'],
-          'set đồ': ['sets'],
-          'áo khoác': ['outerwear'],
-          'giày': ['shoes'],
-          'túi xách': ['bags']
+      if (typeof selectedCategory === 'object' && selectedCategory !== null) {
+        // Collect target category ID and all its direct subcategory IDs
+        const allowedCategoryIds = [selectedCategory.id];
+        if (selectedCategory.subcategories && Array.isArray(selectedCategory.subcategories)) {
+          selectedCategory.subcategories.forEach(sub => {
+            allowedCategoryIds.push(sub.id);
+          });
         }
 
-        const mappedTarget = categoryMapping[targetCategoryStr]
-        if (mappedTarget) {
-          return mappedTarget.includes(productCategoryLower)
-        }
+        result = result.filter(p => allowedCategoryIds.includes(p.categoryId));
+      } else {
+        // Fallback: Selected category is a string (e.g. from URL fallback)
+        const targetCategoryStr = String(selectedCategory)
+          .replace(/\+/g, ' ')
+          .toLowerCase()
+          .normalize('NFC');
+          
+        result = result.filter(p => {
+          const productCategoryNameLower = (p.categoryName || '').toLowerCase().normalize('NFC');
+          const productCategoryLower = (p.category || '').toLowerCase().normalize('NFC');
+          const productNameLower = p.name.toLowerCase().normalize('NFC');
 
-        // 2. Nếu là danh mục con cấp thấp hơn (Ví dụ: "Áo sơ mi", "Trang sức", "Kính mắt",...)
-        let matchedBaseCategory = null
-        
-        if (targetCategoryStr.includes('áo thun') || targetCategoryStr.includes('áo sơ mi') || targetCategoryStr.includes('áo kiểu') || targetCategoryStr.includes('áo hai dây') || targetCategoryStr.includes('ba lỗ')) {
-          matchedBaseCategory = 'tops'
-        } else if (targetCategoryStr.includes('quần') || targetCategoryStr.includes('chân váy')) {
-          matchedBaseCategory = 'bottoms'
-        } else if (targetCategoryStr.includes('đầm')) {
-          matchedBaseCategory = 'dresses'
-        } else if (targetCategoryStr.includes('set')) {
-          matchedBaseCategory = 'sets'
-        } else if (targetCategoryStr.includes('blazer') || targetCategoryStr.includes('coat') || targetCategoryStr.includes('áo khoác') || targetCategoryStr.includes('cardigan')) {
-          matchedBaseCategory = 'outerwear'
-        } else if (targetCategoryStr.includes('giày') || targetCategoryStr.includes('sandal') || targetCategoryStr.includes('sneaker') || targetCategoryStr.includes('búp bê')) {
-          matchedBaseCategory = 'shoes'
-        } else if (targetCategoryStr.includes('túi') || targetCategoryStr.includes('balo')) {
-          matchedBaseCategory = 'bags'
-        } else {
-          // Mặc định các danh mục thuộc Phụ kiện khác (như trang sức, kính mắt, thắt lưng, mũ & nón...)
-          matchedBaseCategory = 'accessories'
-        }
+          // Check if product belongs directly to a category matching this name
+          if (productCategoryNameLower === targetCategoryStr || productCategoryLower === targetCategoryStr) {
+            return true;
+          }
 
-        if (productCategoryLower !== matchedBaseCategory) {
-          return false
-        }
+          // Or if the target category string matches our mapping structure or keywords
+          const categoryMapping = {
+            'quần áo': ['tops', 'bottoms', 'dresses', 'sets', 'outerwear'],
+            'giày & túi': ['shoes', 'bags'],
+            'phụ kiện': ['accessories'],
+            'áo': ['tops'],
+            'quần': ['bottoms'],
+            'váy & đầm': ['dresses'],
+            'set đồ': ['sets'],
+            'áo khoác': ['outerwear'],
+            'giày': ['shoes'],
+            'túi xách': ['bags']
+          };
 
-        // Khớp từ khóa trong tên hoặc tags
-        const keywords = extractKeywords(targetCategoryStr)
-        return keywords.some(k => productNameLower.includes(k) || p.tags.some(t => t.toLowerCase().normalize('NFC').includes(k)))
-      })
+          const mappedTarget = categoryMapping[targetCategoryStr];
+          if (mappedTarget && mappedTarget.includes(productCategoryLower)) {
+            return true;
+          }
+
+          // Fallback keyword search
+          const keywords = extractKeywords(targetCategoryStr);
+          return keywords.some(k => 
+            productNameLower.includes(k) || 
+            productCategoryNameLower.includes(k) ||
+            p.tags.some(t => t.toLowerCase().normalize('NFC').includes(k))
+          );
+        });
+      }
     }
 
     // 3. Color
@@ -366,6 +373,7 @@ export const ShopPage = () => {
   }
 
   const handleClearFilters = () => {
+    setSearchVal('')
     setSearchQuery('')
     setSelectedCategory('all')
     setSelectedColor(null)
@@ -440,13 +448,16 @@ export const ShopPage = () => {
                     type="text"
                     id="search-product-input"
                     placeholder="Tên sản phẩm..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={searchVal}
+                    onChange={(e) => setSearchVal(e.target.value)}
                     className="w-full bg-brand-cream/50 border border-gray-200 px-4 py-2.5 rounded-lg text-sm text-brand-charcoal focus:outline-none focus:border-brand-charcoal focus:ring-1 focus:ring-brand-blush/30 transition-all font-sans"
                   />
-                  {searchQuery && (
+                  {searchVal && (
                     <button
-                      onClick={() => setSearchQuery('')}
+                      onClick={() => {
+                        setSearchVal('')
+                        setSearchQuery('')
+                      }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-charcoal text-xs"
                     >
                       ✕

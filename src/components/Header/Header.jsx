@@ -83,7 +83,6 @@ export const Header = () => {
             { label: 'Trang chủ', href: '/' },
             { label: 'Mới về', href: '/shop?filter=new' },
             ...dynamicRootLinks,
-            { label: 'Sale', href: '/shop?filter=sale', isSale: true },
           ]
 
           setDisplayLinks(dynamicLinks)

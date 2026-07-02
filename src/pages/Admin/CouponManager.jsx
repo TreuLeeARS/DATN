@@ -128,6 +128,24 @@ export const CouponManager = () => {
     )
   }
 
+  // Restore Coupon handler
+  const handleRestoreCoupon = (id, code) => {
+    openConfirm(
+      'Phục hồi mã giảm giá',
+      `Bạn có chắc chắn muốn phục hồi mã giảm giá "${code}"?`,
+      async () => {
+        try {
+          await couponApi.restoreCoupon(id)
+          toast.success(`Đã phục hồi mã giảm giá "${code}" thành công!`)
+          fetchCoupons()
+        } catch (err) {
+          console.error('Error restoring coupon:', err)
+          toast.error('Lỗi xảy ra khi phục hồi mã giảm giá.')
+        }
+      }
+    )
+  }
+
   // Helper formats
   const formatPrice = (value) => {
     if (value === null || value === undefined) return '0 đ'
@@ -226,7 +244,9 @@ export const CouponManager = () => {
                         <p className="text-[9.5px] text-brand-muted mt-0.5">Tối đa/user: {c.maxUsagePerUser || 1}</p>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        {expired ? (
+                        {c.isdeleted || c.deleted ? (
+                          <span className="inline-block px-2 py-0.5 text-[8.5px] font-bold bg-red-50 text-red-600 border border-red-200 uppercase tracking-widest">Đã xóa</span>
+                        ) : expired ? (
                           <span className="inline-block px-2 py-0.5 text-[8.5px] font-bold bg-red-50 text-red-600 border border-red-200 uppercase tracking-widest">Hết hạn</span>
                         ) : fullyUsed ? (
                           <span className="inline-block px-2 py-0.5 text-[8.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-widest">Hết lượt</span>
@@ -235,12 +255,21 @@ export const CouponManager = () => {
                         )}
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <button
-                          onClick={() => handleDeleteCoupon(c.couponId, c.couponCode)}
-                          className="text-[9.5px] uppercase tracking-wider font-semibold text-red-700 hover:text-red-900 hover:underline cursor-pointer"
-                        >
-                          Xóa
-                        </button>
+                        {c.isdeleted || c.deleted ? (
+                          <button
+                            onClick={() => handleRestoreCoupon(c.couponId, c.couponCode)}
+                            className="text-[9.5px] uppercase tracking-wider font-semibold text-green-700 hover:text-green-900 hover:underline cursor-pointer"
+                          >
+                            Phục hồi
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDeleteCoupon(c.couponId, c.couponCode)}
+                            className="text-[9.5px] uppercase tracking-wider font-semibold text-red-700 hover:text-red-900 hover:underline cursor-pointer"
+                          >
+                            Xóa
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )

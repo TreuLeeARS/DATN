@@ -5,6 +5,23 @@ import productApi from '../../api/productApi'
 import categoryApi from '../../api/categoryApi'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 
+const translateColor = (color) => {
+  if (!color) return ''
+  const mapping = {
+    'white': 'Trắng',
+    'black': 'Đen',
+    'pink': 'Hồng',
+    'beige': 'Be',
+    'brown': 'Nâu',
+    'grey': 'Xám',
+    'red': 'Đỏ',
+    'blue': 'Xanh',
+    'yellow': 'Vàng',
+    'charcoal': 'Charcoal'
+  }
+  return mapping[color.toLowerCase()] || color
+}
+
 export const ProductManager = () => {
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
@@ -19,6 +36,13 @@ export const ProductManager = () => {
   const [editingVariant, setEditingVariant] = useState(null) // null for create, object for edit
   const [selectedProductForVariants, setSelectedProductForVariants] = useState(null) // product detail object
   const [uploadingIndex, setUploadingIndex] = useState(null) // index of the image being uploaded
+  
+  // Selected colors and sizes state for product creation
+  const [selectedColors, setSelectedColors] = useState([])
+  const [selectedSizes, setSelectedSizes] = useState([])
+  
+  // Search query state for products
+  const [searchQuery, setSearchQuery] = useState('')
   
   // Custom Confirmation Modal state
   const [confirmModal, setConfirmModal] = useState({
@@ -61,8 +85,22 @@ export const ProductManager = () => {
   // Fetch categories & products on mount
   useEffect(() => {
     fetchCategories()
+  }, [])
+
+  useEffect(() => {
     fetchProducts()
   }, [page])
+
+  // Fetch when search query is cleared
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      if (page === 0) {
+        fetchProducts()
+      } else {
+        setPage(0)
+      }
+    }
+  }, [searchQuery])
 
   const fetchCategories = async () => {
     try {
@@ -78,11 +116,20 @@ export const ProductManager = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const res = await productApi.getAllProductsForAdmin({
-        page: page,
-        size: 10,
-        sort: 'productId,desc'
-      })
+      let res
+      if (searchQuery.trim() !== '') {
+        res = await productApi.searchProducts({
+          name: searchQuery.trim(),
+          page: page,
+          size: 10
+        })
+      } else {
+        res = await productApi.getAllProductsForAdmin({
+          page: page,
+          size: 10,
+          sort: 'productId,desc'
+        })
+      }
       if (res && res.data) {
         setProducts(res.data.content || [])
         setTotalPages(res.data.totalPages || 1)
@@ -109,6 +156,8 @@ export const ProductManager = () => {
       })
     } else {
       setEditingProduct(null)
+      setSelectedColors([])
+      setSelectedSizes([])
       setProductForm({
         name: '',
         description: '',
@@ -211,7 +260,21 @@ export const ProductManager = () => {
         await productApi.updateProduct(editingProduct.productId, payload)
         toast.success('Cập nhật sản phẩm thành công!')
       } else {
-        await productApi.createProduct({ ...payload, variants: [] })
+        // Generate combinations of selected colors and sizes as variants
+        const generatedVariants = []
+        selectedColors.forEach(color => {
+          selectedSizes.forEach(size => {
+            generatedVariants.push({
+              color: color,
+              size: size,
+              price: Number(productForm.baseprice),
+              quantityInStock: 10, // default stock of 10
+              sku: '' // empty SKU lets the BE generate a unique one
+            })
+          })
+        })
+
+        await productApi.createProduct({ ...payload, variants: generatedVariants })
         toast.success('Tạo sản phẩm mới thành công!')
       }
       setIsProductModalOpen(false)
@@ -283,7 +346,7 @@ export const ProductManager = () => {
       setEditingVariant(null)
       setVariantForm({
         size: 'S',
-        color: 'Trắng',
+        color: 'White',
         price: selectedProductForVariants.baseprice,
         quantityInStock: 100,
         sku: `SKU-${selectedProductForVariants.productId}-${Date.now().toString().slice(-4)}`
@@ -369,6 +432,46 @@ export const ProductManager = () => {
         
         {/* ─── LEFT: PRODUCTS TABLE ─── */}
         <div className="w-full lg:w-3/5 bg-white border border-black/10 shadow-sm">
+          {/* Search bar */}
+          <div className="p-4 border-b border-gray-100 bg-gray-50/30">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (page === 0) {
+                  fetchProducts()
+                } else {
+                  setPage(0)
+                }
+              }}
+              className="flex gap-2"
+            >
+              <input
+                type="text"
+                placeholder="Tìm kiếm sản phẩm theo tên..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-200 focus:outline-none focus:border-brand-charcoal text-xs font-sans placeholder-gray-400"
+              />
+              <button
+                type="submit"
+                className="bg-brand-charcoal hover:bg-brand-dark text-white text-[10px] font-bold uppercase tracking-wider px-5 py-2 cursor-pointer transition-colors active:scale-95 duration-200 shrink-0"
+              >
+                Tìm kiếm
+              </button>
+              {searchQuery.trim() !== '' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('')
+                  }}
+                  className="border border-gray-200 text-gray-500 hover:text-brand-charcoal hover:bg-gray-100 text-[10px] font-bold uppercase tracking-wider px-3.5 py-2 cursor-pointer transition-colors active:scale-95 duration-200 shrink-0"
+                >
+                  Xóa lọc
+                </button>
+              )}
+            </form>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -527,7 +630,7 @@ export const ProductManager = () => {
                       {selectedProductForVariants.variants.map((v) => (
                         <tr key={v.productVariantId} className="hover:bg-gray-50/50">
                           <td className="py-3 font-semibold text-brand-charcoal">{v.size}</td>
-                          <td className="py-3 text-brand-muted">{v.color}</td>
+                          <td className="py-3 text-brand-muted">{translateColor(v.color)}</td>
                           <td className="py-3 font-semibold text-brand-charcoal">{formatVND(v.price)}</td>
                           <td className="py-3 text-center">
                             <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
@@ -699,6 +802,83 @@ export const ProductManager = () => {
                 </div>
               </div>
 
+              {/* Color & Size selection when creating new product */}
+              {!editingProduct && (
+                <div className="grid grid-cols-2 gap-6 border-t border-gray-100 pt-4">
+                  {/* Colors Checkbox List */}
+                  <div className="space-y-2">
+                    <label className="block font-semibold uppercase text-brand-muted text-[10px]">
+                      Màu sắc có sẵn
+                    </label>
+                    <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto border border-gray-200 p-2.5 bg-gray-50/30">
+                      {['Trắng', 'Đen', 'Hồng', 'Be', 'Nâu', 'Xám', 'Đỏ', 'Xanh', 'Vàng'].map(color => {
+                        const isChecked = selectedColors.includes(color)
+                        return (
+                          <label
+                            key={color}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 border text-[11px] font-semibold cursor-pointer transition-all duration-200 active:scale-95 select-none ${
+                              isChecked
+                                ? 'bg-brand-charcoal text-white border-brand-charcoal'
+                                : 'bg-white text-brand-charcoal border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setSelectedColors(prev =>
+                                  prev.includes(color)
+                                    ? prev.filter(c => c !== color)
+                                    : [...prev, color]
+                                )
+                              }}
+                              className="hidden"
+                            />
+                            <span>{color}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Sizes Checkbox List */}
+                  <div className="space-y-2">
+                    <label className="block font-semibold uppercase text-brand-muted text-[10px]">
+                      Kích cỡ có sẵn
+                    </label>
+                    <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto border border-gray-200 p-2.5 bg-gray-50/30">
+                      {['S', 'M', 'L', 'XL'].map(size => {
+                        const isChecked = selectedSizes.includes(size)
+                        return (
+                          <label
+                            key={size}
+                            className={`flex items-center gap-1 px-3 py-1.5 border text-[11px] font-semibold cursor-pointer transition-all duration-200 active:scale-95 select-none ${
+                              isChecked
+                                ? 'bg-brand-charcoal text-white border-brand-charcoal font-bold'
+                                : 'bg-white text-brand-charcoal border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setSelectedSizes(prev =>
+                                  prev.includes(size)
+                                    ? prev.filter(s => s !== size)
+                                    : [...prev, size]
+                                )
+                              }}
+                              className="hidden"
+                            />
+                            <span>{size}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
@@ -755,8 +935,28 @@ export const ProductManager = () => {
                     className="w-full p-2.5 border border-gray-200 focus:outline-none focus:border-brand-charcoal font-sans bg-white"
                     required
                   >
-                    {['Trắng', 'Đen', 'Hồng', 'Be', 'Nâu', 'Xám', 'Đỏ', 'Xanh', 'Vàng', 'Charcoal'].map(c => (
-                      <option key={c} value={c}>{c}</option>
+                    {[
+                      { value: 'Trắng', label: 'Trắng' },
+                      { value: 'Đen', label: 'Đen' },
+                      { value: 'Hồng', label: 'Hồng' },
+                      { value: 'Be', label: 'Be' },
+                      { value: 'Nâu', label: 'Nâu' },
+                      { value: 'Xám', label: 'Xám' },
+                      { value: 'Đỏ', label: 'Đỏ' },
+                      { value: 'Xanh', label: 'Xanh' },
+                      { value: 'Vàng', label: 'Vàng' },
+                      { value: 'Charcoal', label: 'Charcoal' },
+                      { value: 'White', label: 'Trắng (White)' },
+                      { value: 'Black', label: 'Đen (Black)' },
+                      { value: 'Pink', label: 'Hồng (Pink)' },
+                      { value: 'Beige', label: 'Be (Beige)' },
+                      { value: 'Brown', label: 'Nâu (Brown)' },
+                      { value: 'Grey', label: 'Xám (Grey)' },
+                      { value: 'Red', label: 'Đỏ (Red)' },
+                      { value: 'Blue', label: 'Xanh (Blue)' },
+                      { value: 'Yellow', label: 'Vàng (Yellow)' }
+                    ].map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
                 </div>
@@ -790,14 +990,16 @@ export const ProductManager = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="block font-semibold uppercase text-brand-muted text-[10px]">SKU sản phẩm</label>
+                <div className="flex justify-between items-center">
+                  <label className="block font-semibold uppercase text-brand-muted text-[10px]">SKU sản phẩm</label>
+                  <span className="text-[9px] text-brand-muted uppercase font-normal">(Tự động tạo)</span>
+                </div>
                 <input
                   type="text"
                   name="sku"
                   value={variantForm.sku}
-                  onChange={handleVariantInputChange}
-                  placeholder="Ví dụ: SKU-OUTTA-01"
-                  className="w-full p-2.5 border border-gray-200 focus:outline-none focus:border-brand-charcoal font-sans"
+                  disabled={true}
+                  className="w-full p-2.5 border border-gray-200 bg-gray-50 text-gray-400 font-sans cursor-not-allowed"
                 />
               </div>
 

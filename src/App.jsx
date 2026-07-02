@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { Header } from './components/Header/index.js'
@@ -12,18 +12,29 @@ import { AuthPage, ResetPasswordPage } from './pages/AuthPage/index.js'
 import { ShopPage } from './pages/ShopPage/index.js'
 import { CartPage } from './pages/CartPage/index.js'
 import { ShopPromptModal } from './components/ShopPromptModal/ShopPromptModal.jsx'
+import { ErrorBoundary } from './components/ErrorBoundary.jsx'
+import { NotFoundPage } from './pages/NotFoundPage.jsx'
+import { AboutPage } from './pages/AboutPage/AboutPage.jsx'
 
-// Admin Panel Components & Pages
+// Admin Panel Components & Pages (Lazy loaded for client performance)
 import { AdminProtectedRoute } from './components/AdminProtectedRoute.jsx'
 import { AdminLayout } from './components/AdminLayout.jsx'
-import { AdminDashboard } from './pages/Admin/AdminDashboard.jsx'
-import { CategoryManager } from './pages/Admin/CategoryManager.jsx'
-import { ProductManager } from './pages/Admin/ProductManager.jsx'
-import { OrderManager } from './pages/Admin/OrderManager.jsx'
-import { UserManager } from './pages/Admin/UserManager.jsx'
-import { CouponManager } from './pages/Admin/CouponManager.jsx'
-import { PopupManager } from './pages/Admin/PopupManager.jsx'
 import { MyOrders } from './pages/ShopPage/MyOrders.jsx'
+
+const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard.jsx').then(m => ({ default: m.AdminDashboard })))
+const CategoryManager = lazy(() => import('./pages/Admin/CategoryManager.jsx').then(m => ({ default: m.CategoryManager })))
+const ProductManager = lazy(() => import('./pages/Admin/ProductManager.jsx').then(m => ({ default: m.ProductManager })))
+const OrderManager = lazy(() => import('./pages/Admin/OrderManager.jsx').then(m => ({ default: m.OrderManager })))
+const UserManager = lazy(() => import('./pages/Admin/UserManager.jsx').then(m => ({ default: m.UserManager })))
+const CouponManager = lazy(() => import('./pages/Admin/CouponManager.jsx').then(m => ({ default: m.CouponManager })))
+const PopupManager = lazy(() => import('./pages/Admin/PopupManager.jsx').then(m => ({ default: m.PopupManager })))
+
+// Simple loading indicator for Suspense
+const AdminLoading = () => (
+  <div className="flex items-center justify-center min-h-[400px]">
+    <div className="w-8 h-8 border-4 border-brand-charcoal border-t-transparent rounded-full animate-spin"></div>
+  </div>
+)
 
 function App() {
   const location = useLocation()
@@ -45,66 +56,74 @@ function App() {
   }, [location.pathname])
 
   return (
-    <CartProvider>
-      <Toaster position="top-right" reverseOrder={false} />
-      <Routes>
-        {/* Landing Page */}
-        <Route
-          path="/"
-          element={
-            <>
-              <Header />
-              <main>
-                <div id="home"><Hero /></div>
-                <div id="collections">
-                  <div id="sale">
-                    <ProductGrid />
+    <ErrorBoundary>
+      <CartProvider>
+        <Toaster position="top-right" reverseOrder={false} />
+        <Routes>
+          {/* Landing Page */}
+          <Route
+            path="/"
+            element={
+              <>
+                <Header />
+                <main>
+                  <div id="home"><Hero /></div>
+                  <div id="collections">
+                    <div id="sale">
+                      <ProductGrid />
+                    </div>
                   </div>
-                </div>
-                <div id="new-arrivals">
-                  <AIRecommendations />
-                </div>
-              </main>
-              <Footer />
-              <ShopPromptModal />
-            </>
-          }
-        />
+                  <div id="new-arrivals">
+                    <AIRecommendations />
+                  </div>
+                </main>
+                <Footer />
+                <ShopPromptModal />
+              </>
+            }
+          />
 
-        {/* Auth Page (Login / Register) */}
-        <Route path="/auth" element={<AuthPage />} />
+          {/* Auth Page (Login / Register) */}
+          <Route path="/auth" element={<AuthPage />} />
 
-        {/* Reset Password Page */}
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+          {/* Reset Password Page */}
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Shop Page */}
-        <Route path="/shop" element={<ShopPage />} />
+          {/* Shop Page */}
+          <Route path="/shop" element={<ShopPage />} />
 
-        {/* Cart / Checkout Page */}
-        <Route path="/cart" element={<CartPage />} />
+          {/* Cart / Checkout Page */}
+          <Route path="/cart" element={<CartPage />} />
 
-        {/* Customer Order History Page */}
-        <Route path="/my-orders" element={<MyOrders />} />
+          {/* Customer Order History Page */}
+          <Route path="/my-orders" element={<MyOrders />} />
 
-        {/* Admin Panel Route Group */}
-        <Route
-          path="/admin"
-          element={
-            <AdminProtectedRoute>
-              <AdminLayout />
-            </AdminProtectedRoute>
-          }
-        >
-          <Route index element={<AdminDashboard />} />
-          <Route path="categories" element={<CategoryManager />} />
-          <Route path="products" element={<ProductManager />} />
-          <Route path="orders" element={<OrderManager />} />
-          <Route path="users" element={<UserManager />} />
-          <Route path="coupons" element={<CouponManager />} />
-          <Route path="popups" element={<PopupManager />} />
-        </Route>
-      </Routes>
-    </CartProvider>
+          {/* About us page */}
+          <Route path="/about" element={<AboutPage />} />
+
+          {/* Admin Panel Route Group */}
+          <Route
+            path="/admin"
+            element={
+              <AdminProtectedRoute>
+                <AdminLayout />
+              </AdminProtectedRoute>
+            }
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="categories" element={<CategoryManager />} />
+            <Route path="products" element={<ProductManager />} />
+            <Route path="orders" element={<OrderManager />} />
+            <Route path="users" element={<UserManager />} />
+            <Route path="coupons" element={<CouponManager />} />
+            <Route path="popups" element={<PopupManager />} />
+          </Route>
+
+          {/* IMP-01 FIX: Catch-all route to prevent blank page for invalid paths */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </CartProvider>
+    </ErrorBoundary>
   )
 }
 

@@ -64,10 +64,9 @@ export const mapDbProduct = (dbProduct) => {
   const name = dbProduct.name || 'Sản phẩm không tên';
   const price = dbProduct.baseprice ? Number(dbProduct.baseprice) : 0;
   
-  // Tạo giả lập giá gốc và Badge thời trang để giữ tính mỹ thuật Zara/LV
-  const isEvenId = dbProduct.productId % 2 === 0;
-  const originalPrice = isEvenId ? Math.round(price * 1.35) : null;
-  const badge = isEvenId ? 'sale' : (dbProduct.productId % 3 === 0 ? 'bestseller' : 'new');
+  // BUG-FIX: Bỏ giảm giá giả lập và mác Sale mock không có trong database theo ý kiến sếp
+  const originalPrice = null;
+  const badge = null;
 
   // Chuẩn hóa ảnh
   let images = dbProduct.imageUrls;
@@ -100,13 +99,19 @@ export const mapDbProduct = (dbProduct) => {
   let colors = [];
   let sizes = [];
 
-  if (dbProduct.variants && Array.isArray(dbProduct.variants) && dbProduct.variants.length > 0) {
-    // Lấy kích cỡ độc nhất
-    sizes = [...new Set(dbProduct.variants.map(v => v.size).filter(Boolean))];
-    
-    // Lấy màu sắc độc nhất
-    const uniqueColors = [...new Set(dbProduct.variants.map(v => v.color).filter(Boolean))];
-    colors = uniqueColors.map(colorName => mapColor(colorName));
+  if (dbProduct.variants && Array.isArray(dbProduct.variants)) {
+    if (dbProduct.variants.length > 0) {
+      // Lấy kích cỡ độc nhất
+      sizes = [...new Set(dbProduct.variants.map(v => v.size).filter(Boolean))];
+      
+      // Lấy màu sắc độc nhất
+      const uniqueColors = [...new Set(dbProduct.variants.map(v => v.color).filter(Boolean))];
+      colors = uniqueColors.map(colorName => mapColor(colorName));
+    } else {
+      // Sản phẩm thực sự không có biến thể nào trong DB
+      colors = [];
+      sizes = [];
+    }
   } else {
     // Fallback mặc định cho ProductListResponse để hiển thị ngay trên lưới
     colors = [
@@ -125,6 +130,8 @@ export const mapDbProduct = (dbProduct) => {
     originalPrice,
     images,
     category,
+    categoryId: dbProduct.categoryId,
+    categoryName: dbProduct.categoryName,
     tags: dbProduct.description ? dbProduct.description.split(' ').slice(0, 3).map(w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"")) : ['elegant', 'minimalist', 'premium'],
     badge,
     colors,

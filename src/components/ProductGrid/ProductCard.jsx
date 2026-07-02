@@ -133,6 +133,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
             src={product.images[0]}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-300"
+            loading="lazy"
           />
 
           {/* Overlay */}
@@ -238,7 +239,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
 
             {/* Left Column: Image Gallery */}
             <div className="w-full md:w-1/2 p-6 flex flex-col justify-center bg-brand-cream/20">
-              <div className="w-full aspect-square md:aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 relative">
+              <div className="w-full aspect-square md:aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 relative shrink-0">
                 <img
                   src={product.images[activeImageIndex]}
                   alt={`${product.name} - Chi tiết ${activeImageIndex + 1}`}
@@ -284,7 +285,18 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
                 {/* Price Section */}
                 <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
                   <span className="font-bold text-brand-charcoal text-2xl">
-                    {formatVND(product.price)}
+                    {(() => {
+                      if (selectedColor !== null && selectedSize) {
+                        const selColorName = product.colors[selectedColor]?.name;
+                        const variant = product.variants?.find(
+                          v => v.color?.toLowerCase() === selColorName?.toLowerCase() && v.size === selectedSize
+                        );
+                        if (variant && variant.price) {
+                          return formatVND(Number(variant.price));
+                        }
+                      }
+                      return formatVND(product.price);
+                    })()}
                   </span>
                   {product.originalPrice && (
                     <>

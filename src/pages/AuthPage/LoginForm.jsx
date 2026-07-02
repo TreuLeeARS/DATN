@@ -110,7 +110,6 @@ export const LoginForm = ({ onSwitchTab, onForgotPassword }) => {
         localStorage.setItem('refreshToken', refreshToken)
       }
 
-      console.log('Đăng nhập thành công:', response)
       const authRedirectUrl = sessionStorage.getItem('authRedirectUrl')
       sessionStorage.removeItem('authRedirectUrl')
       if (authRedirectUrl && authRedirectUrl !== '/auth' && authRedirectUrl !== '/reset-password') {

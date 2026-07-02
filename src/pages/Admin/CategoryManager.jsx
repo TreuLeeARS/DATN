@@ -7,6 +7,7 @@ export const CategoryManager = () => {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'active' | 'inactive'
+  const [expandedIds, setExpandedIds] = useState(new Set())
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -104,10 +105,49 @@ export const CategoryManager = () => {
     path: getCategoryPath(cat, categories)
   }))
 
-  // Sort alphabetically by path to naturally group children under parents
-  const sortedCategories = [...processedCategories].sort((a, b) => {
-    return a.path.localeCompare(b.path, 'vi', { sensitivity: 'base' })
-  })
+  // Custom tree sorting function (Depth-First Search) to push inactive roots to the bottom
+  const buildSortedTree = (list) => {
+    const result = [];
+    
+    // Sort helper: active first, then alphabetical by name
+    const sortCategories = (cats) => {
+      return [...cats].sort((a, b) => {
+        // Active first, inactive last
+        if (a.isActive && !b.isActive) return -1;
+        if (!a.isActive && b.isActive) return 1;
+        
+        // Secondary: alphabetical name
+        return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' });
+      });
+    };
+
+    const roots = list.filter(c => !c.parentId);
+    const sortedRoots = sortCategories(roots);
+
+    const traverse = (node) => {
+      result.push(node);
+      const children = list.filter(c => c.parentId === node.id);
+      const sortedChildren = sortCategories(children);
+      sortedChildren.forEach(child => {
+        traverse(child);
+      });
+    };
+
+    sortedRoots.forEach(root => {
+      traverse(root);
+    });
+
+    // Orphaned nodes fallback safety
+    const addedIds = new Set(result.map(r => r.id));
+    const orphans = list.filter(c => !addedIds.has(c.id));
+    if (orphans.length > 0) {
+      result.push(...sortCategories(orphans));
+    }
+
+    return result;
+  };
+
+  const sortedCategories = buildSortedTree(processedCategories)
 
   // Filter categories by search term and status
   const filteredCategories = sortedCategories.filter(cat => {
@@ -119,6 +159,53 @@ export const CategoryManager = () => {
       (statusFilter === 'inactive' && !cat.isActive)
 
     return matchesSearch && matchesStatus
+  })
+
+  const hasChildren = (catId) => {
+    return categories.some(c => c.parentId === catId)
+  }
+
+  const isCategoryVisible = (cat) => {
+    let parentId = cat.parentId
+    while (parentId) {
+      if (!expandedIds.has(parentId)) {
+        return false
+      }
+      const parent = categories.find(c => c.id === parentId)
+      if (!parent) break
+      parentId = parent.parentId
+    }
+    return true
+  }
+
+  const toggleExpand = (id) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const expandAll = () => {
+    const parentIds = categories
+      .filter(c => categories.some(child => child.parentId === c.id))
+      .map(c => c.id)
+    setExpandedIds(new Set(parentIds))
+  }
+
+  const collapseAll = () => {
+    setExpandedIds(new Set())
+  }
+
+  // Final categories to render in tree table
+  const visibleCategories = filteredCategories.filter(cat => {
+    // If user is searching, bypass collapsing to show search results directly
+    if (searchTerm.trim() !== '') return true
+    return isCategoryVisible(cat)
   })
 
   // Open modal for Creating new category
@@ -162,39 +249,37 @@ export const CategoryManager = () => {
       return
     }
 
-    const payload = {
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      parentId: formData.parentId ? parseInt(formData.parentId) : null
-    }
-
     try {
       if (modalMode === 'create') {
-        const response = await categoryApi.createCategory(payload)
-        if (response.status === 200 || response.status === 210 || response.status === 201) {
-          toast.success(`Tạo danh mục "${payload.name}" thành công!`)
-        } else {
-          toast.success(`Đã gửi yêu cầu tạo danh mục "${payload.name}"`)
+        const payloadCreate = {
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          parent: formData.parentId ? parseInt(formData.parentId) : null
         }
+        await categoryApi.createCategory(payloadCreate)
+        toast.success(`Tạo danh mục "${payloadCreate.name}" thành công!`)
       } else {
         // Edit mode
         const categoryId = editingCategory.id
+        const parentIdParsed = formData.parentId ? parseInt(formData.parentId) : null
+        
         // Extra protection: double check cyclic parent setup
-        if (payload.parentId === categoryId) {
+        if (parentIdParsed === categoryId) {
           toast.error('Danh mục không thể làm cha của chính nó!')
           return
         }
-        if (payload.parentId && isDescendant(payload.parentId, categoryId, categories)) {
+        if (parentIdParsed && isDescendant(parentIdParsed, categoryId, categories)) {
           toast.error('Không thể chọn danh mục con làm danh mục cha!')
           return
         }
 
-        const response = await categoryApi.updateCategory(categoryId, payload)
-        if (response.status === 200 || response.status === 210) {
-          toast.success(`Cập nhật danh mục "${payload.name}" thành công!`)
-        } else {
-          toast.success(`Đã cập nhật danh mục "${payload.name}"`)
+        const payloadUpdate = {
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          parentId: parentIdParsed
         }
+        await categoryApi.updateCategory(categoryId, payloadUpdate)
+        toast.success(`Cập nhật danh mục "${payloadUpdate.name}" thành công!`)
       }
       setIsModalOpen(false)
       loadCategories()
@@ -277,16 +362,36 @@ export const CategoryManager = () => {
           </div>
         </div>
 
-        {/* Add Button */}
-        <button
-          onClick={handleOpenCreateModal}
-          className="flex items-center justify-center space-x-2 bg-brand-charcoal hover:bg-brand-blush hover:text-brand-charcoal text-white font-semibold text-sm py-3 px-6 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer active:scale-95 shrink-0"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Thêm danh mục</span>
-        </button>
+        {/* Actions Button Group */}
+        <div className="flex items-center gap-2 shrink-0">
+          {searchTerm.trim() === '' && (
+            <>
+              <button
+                onClick={expandAll}
+                className="flex items-center justify-center space-x-1.5 border border-gray-200 hover:bg-gray-50 text-brand-charcoal font-semibold text-xs py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer active:scale-95"
+                title="Mở rộng tất cả danh mục"
+              >
+                <span>Mở rộng tất cả</span>
+              </button>
+              <button
+                onClick={collapseAll}
+                className="flex items-center justify-center space-x-1.5 border border-gray-200 hover:bg-gray-50 text-brand-charcoal font-semibold text-xs py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer active:scale-95"
+                title="Thu gọn tất cả danh mục"
+              >
+                <span>Thu gọn tất cả</span>
+              </button>
+            </>
+          )}
+          <button
+            onClick={handleOpenCreateModal}
+            className="flex items-center justify-center space-x-2 bg-brand-charcoal hover:bg-brand-blush hover:text-brand-charcoal text-white font-semibold text-sm py-3 px-6 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer active:scale-95 shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Thêm danh mục</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Categories Table */}
@@ -321,7 +426,7 @@ export const CategoryManager = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredCategories.map((cat) => {
+                {visibleCategories.map((cat) => {
                   const isRoot = cat.depth === 0
                   return (
                     <tr
@@ -335,16 +440,44 @@ export const CategoryManager = () => {
                         <div className="flex items-center">
                           {/* Visual Indent Indicators */}
                           {cat.depth > 0 && (
-                            <span className="text-gray-300 font-mono tracking-widest mr-2 select-none">
+                            <span className="text-gray-300 font-mono tracking-widest mr-1 select-none">
                               {'　'.repeat(cat.depth - 1)}└─
                             </span>
                           )}
+
+                          {/* Collapse/Expand Toggle Arrow for Parent Categories */}
+                          {hasChildren(cat.id) && searchTerm.trim() === '' ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpand(cat.id)}
+                              className="mr-1.5 p-1 text-gray-500 hover:text-brand-charcoal hover:bg-gray-100 rounded transition-all cursor-pointer select-none"
+                            >
+                              <svg
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                  expandedIds.has(cat.id) ? 'rotate-90' : ''
+                                }`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          ) : (
+                            // Placeholder indent if it's a leaf node to align text beautifully
+                            searchTerm.trim() === '' && <span className="w-6 h-6 inline-block" />
+                          )}
+
                           <span
+                            onClick={() => hasChildren(cat.id) && searchTerm.trim() === '' && toggleExpand(cat.id)}
                             className={`${
                               isRoot
                                 ? 'text-brand-charcoal font-bold text-sm'
                                 : 'text-gray-700 text-sm font-normal'
-                            } ${!cat.isActive ? 'line-through text-brand-muted' : ''}`}
+                            } ${!cat.isActive ? 'line-through text-brand-muted' : ''} ${
+                              hasChildren(cat.id) && searchTerm.trim() === '' ? 'cursor-pointer hover:underline' : ''
+                            }`}
                           >
                             {cat.name}
                           </span>

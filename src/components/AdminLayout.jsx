@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import authApi from '../api/authApi'
 import { cn } from '../utils/cn'
@@ -277,22 +277,19 @@ export const AdminLayout = () => {
                 <span>Quản trị</span>
                 <span>/</span>
                 <span className="text-brand-charcoal font-medium">
-                  {location.pathname === '/admin' ? 'Dashboard' : 
-                   location.pathname === '/admin/categories' ? 'Danh mục' :
-                   location.pathname === '/admin/products' ? 'Sản phẩm' :
-                   location.pathname === '/admin/orders' ? 'Đơn hàng' :
-                   location.pathname === '/admin/users' ? 'Người dùng' :
-                   location.pathname === '/admin/coupons' ? 'Mã giảm giá' : 
-                   location.pathname === '/admin/popups' ? 'Popup gợi ý' : 'Chi tiết'}
+                  {location.pathname === '/admin' ? 'Dashboard' :
+                    location.pathname === '/admin/categories' ? 'Danh mục' :
+                      location.pathname === '/admin/products' ? 'Sản phẩm' :
+                        location.pathname === '/admin/orders' ? 'Đơn hàng' :
+                          location.pathname === '/admin/users' ? 'Người dùng' :
+                            location.pathname === '/admin/coupons' ? 'Mã giảm giá' :
+                              location.pathname === '/admin/popups' ? 'Popup gợi ý' : 'Chi tiết'}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center space-x-4">
-            <span className="hidden sm:inline-block text-xs font-medium text-brand-muted bg-brand-cream py-1 px-3 rounded-full border border-gray-100">
-              Môi trường Phát triển
-            </span>
             <div className="w-8 h-8 rounded-full bg-brand-charcoal text-white flex items-center justify-center font-semibold text-xs border border-gray-100">
               A
             </div>
@@ -301,7 +298,13 @@ export const AdminLayout = () => {
 
         {/* Dynamic Nested Content */}
         <main className="flex-1 p-6 sm:p-10 overflow-y-auto">
-          <Outlet />
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="w-8 h-8 border-4 border-brand-charcoal border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          }>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

@@ -30,29 +30,28 @@ export const navLinks = [
       { label: 'Mũ & Nón', href: '/shop?category=M%C5%A9%20%26%20N%C3%B3n' },
     ]
   },
-  { label: 'Sale', href: '/shop?filter=sale', isSale: true },
 ]
 
 export const socialLinks = [
   {
     platform: 'Instagram',
-    href: 'https://instagram.com',
+    href: '#',
     icon: 'instagram',
   },
   {
     platform: 'Facebook',
-    href: 'https://facebook.com',
+    href: '#',
     icon: 'facebook',
   },
   {
-    platform: 'Pinterest',
-    href: 'https://pinterest.com',
-    icon: 'pinterest',
+    platform: 'GitHub',
+    href: '#',
+    icon: 'github',
   },
   {
-    platform: 'TikTok',
-    href: 'https://tiktok.com',
-    icon: 'tiktok',
+    platform: 'YouTube',
+    href: '#',
+    icon: 'youtube',
   },
 ]
 
@@ -60,11 +59,11 @@ export const footerLinks = [
   {
     heading: 'Mua Sắm',
     links: [
-      { label: 'Hàng Mới', href: '#' },
-      { label: 'Đầm', href: '#' },
-      { label: 'Áo', href: '#' },
-      { label: 'Quần & Chân Váy', href: '#' },
-      { label: 'Áo Khoác', href: '#' },
+      { label: 'Hàng Mới', href: '/shop?filter=new' },
+      { label: 'Đầm', href: '/shop?category=V%C3%A1y%20%26%20%C4%90%E1%BA%A7m' },
+      { label: 'Áo', href: '/shop?category=%C3%81o' },
+      { label: 'Quần & Chân Váy', href: '/shop?category=Qu%E1%BA%A7n' },
+      { label: 'Áo Khoác', href: '/shop?category=%C3%81o%20kho%C3%A1c' },
     ],
   },
   {
@@ -79,7 +78,7 @@ export const footerLinks = [
   {
     heading: 'Về Chúng Tôi',
     links: [
-      { label: 'Giới Thiệu', href: '#' },
+      { label: 'Giới Thiệu', href: '/about' },
       { label: 'Phát Triển Bền Vững', href: '#' },
       { label: 'Blog', href: '#' },
       { label: 'Tuyển Dụng', href: '#' },

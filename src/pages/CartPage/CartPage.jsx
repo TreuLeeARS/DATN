@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useRef, useEffect } from 'react'
+import { useState, useLayoutEffect, useRef, useEffect, useCallback } from 'react'
 import { formatVND } from '../../utils/price.js'
 import { Link, useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
@@ -62,6 +62,9 @@ export const CartPage = () => {
   const [orderSuccess, setOrderSuccess] = useState(false)
   const [orderInfo, setOrderInfo] = useState(null)
 
+  // CRIT-03 FIX: Ref-based guard chống double-submit (state-based có race window)
+  const isSubmittingRef = useRef(false)
+
   const pageRef = useRef(null)
 
   // GSAP animation cho trang giỏ hàng
@@ -110,26 +113,32 @@ export const CartPage = () => {
   const selectedItems = cartItems.filter(item => selectedItemIds.includes(item.id))
   const selectedTotal = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
-  // Đọc mã giảm giá đã áp dụng từ sessionStorage
+  // CRIT-05 FIX: Đọc mã giảm giá — chỉ hiển thị ước tính, server sẽ validate thực tế
   const appliedPromo = sessionStorage.getItem('appliedPromoCode')
-  const discountAmount = appliedPromo === 'PEESTART15' ? Math.round(selectedTotal * 0.15) : 0
+  const estimatedDiscount = appliedPromo ? Math.round(selectedTotal * 0.15) : 0
 
-  // Tính toán phí vận chuyển (Free ship cho đơn hàng >= 1 triệu VND, ngược lại phí ship là 30k)
-  const shippingFee = selectedTotal >= 1000000 ? 0 : 30000
-  const finalTotal = Math.max(0, selectedTotal - discountAmount + shippingFee)
+  // CRIT-06 FIX: Phí vận chuyển ước tính — server sẽ quyết định giá trị cuối cùng
+  const estimatedShippingFee = selectedTotal >= 1000000 ? 0 : 30000
+  const estimatedTotal = Math.max(0, selectedTotal - estimatedDiscount + estimatedShippingFee)
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault()
+
+    // CRIT-03 FIX: Chặn double-submit bằng ref (không bị race condition như state)
+    if (isSubmittingRef.current) return
+    
     if (!validateForm()) {
       toast.error('Vui lòng điền đầy đủ và chính xác thông tin giao hàng!')
       return
     }
 
+    isSubmittingRef.current = true
     setIsSubmitting(true)
 
     try {
-      // Chuẩn bị payload checkout
+      // CRIT-02 FIX: Gửi danh sách cartItemIds đã chọn thay vì checkout toàn bộ giỏ
       const checkoutData = {
+        cartItemIds: selectedItemIds,
         shippingAddress: `${form.fullName} | SĐT: ${form.phone} | Địa chỉ: ${form.address}`,
         couponCode: appliedPromo || null,
         paymentMethodType: form.paymentMethod === 'cod' ? 'COD' : 'VNPAY'
@@ -149,15 +158,15 @@ export const CartPage = () => {
           })
         }
         
-        // Cấu trúc dữ liệu hiển thị màn hình đặt hàng thành công
+        // Cấu trúc dữ liệu hiển thị — sử dụng totalAmount từ server (source of truth)
         const mappedOrderInfo = {
           orderId: orderData.orderId,
           fullName: form.fullName,
           phone: form.phone,
           address: orderData.shippingAddress,
           paymentMethod: form.paymentMethod,
-          total: orderData.totalAmount,
-          items: orderData.items.map(item => ({
+          total: orderData.totalAmount, // Server-authoritative total
+          items: orderData.items?.map(item => ({
             id: item.productVariantId,
             name: item.productName,
             price: item.unitPrice,
@@ -165,9 +174,9 @@ export const CartPage = () => {
             selectedSize: item.size,
             selectedColor: item.color,
             images: ['https://placehold.co/600x600/faf8f6/a3a3c2?text=No+Image']
-          })),
-          discount: orderData.discountValue,
-          shippingFee: 0
+          })) || [],
+          discount: orderData.discountValue || 0,
+          shippingFee: orderData.shippingFee || 0
         }
 
         setOrderInfo(mappedOrderInfo)
@@ -176,6 +185,7 @@ export const CartPage = () => {
         // Xóa giỏ hàng local và reload giỏ hàng từ backend
         await clearCart()
         setSelectedItemIds([])
+        sessionStorage.removeItem('appliedPromoCode')
         toast.success('Đặt đơn hàng thành công!')
       }
     } catch (err) {
@@ -183,9 +193,10 @@ export const CartPage = () => {
       const errorMsg = err.response?.data?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại.'
       toast.error(errorMsg)
     } finally {
+      isSubmittingRef.current = false
       setIsSubmitting(false)
     }
-  }
+  }, [selectedItemIds, form, appliedPromo, clearCart, validateForm])
 
   return (
     <>
@@ -548,29 +559,29 @@ export const CartPage = () => {
                       <span className="font-semibold text-brand-charcoal">{formatVND(selectedTotal)}</span>
                     </div>
 
-                    {discountAmount > 0 && (
+                    {estimatedDiscount > 0 && (
                       <div className="flex justify-between text-green-600 font-medium">
-                        <span>Giảm giá (PEESTART15 - 15%):</span>
-                        <span>-{formatVND(discountAmount)}</span>
+                        <span>Giảm giá ({appliedPromo}) <span className="text-[10px] text-brand-muted font-normal">(ước tính)</span>:</span>
+                        <span>-{formatVND(estimatedDiscount)}</span>
                       </div>
                     )}
 
                     <div className="flex justify-between text-brand-muted">
-                      <span>Phí vận chuyển:</span>
+                      <span>Phí vận chuyển <span className="text-[10px]">(ước tính)</span>:</span>
                       <span className="font-semibold text-brand-charcoal">
-                        {selectedItemIds.length === 0 ? '0 VND' : (shippingFee === 0 ? 'Miễn phí' : formatVND(shippingFee))}
+                        {selectedItemIds.length === 0 ? '0 VND' : (estimatedShippingFee === 0 ? 'Miễn phí' : formatVND(estimatedShippingFee))}
                       </span>
                     </div>
                     
-                    {shippingFee > 0 && selectedTotal > 0 && (
+                    {estimatedShippingFee > 0 && selectedTotal > 0 && (
                       <p className="text-[10px] text-brand-muted italic text-left">
                         * Mẹo: Mua thêm <span className="font-bold text-brand-charcoal">{formatVND(1000000 - selectedTotal)}</span> nữa để được miễn phí vận chuyển!
                       </p>
                     )}
 
                     <div className="border-t border-gray-150 pt-3 flex justify-between font-bold text-base text-brand-charcoal">
-                      <span>Tổng cộng:</span>
-                      <span>{formatVND(selectedItemIds.length === 0 ? 0 : finalTotal)}</span>
+                      <span>Tổng cộng <span className="text-[10px] font-normal text-brand-muted">(ước tính)</span>:</span>
+                      <span>{formatVND(selectedItemIds.length === 0 ? 0 : estimatedTotal)}</span>
                     </div>
                   </div>
 

@@ -50,7 +50,8 @@ export const UserManager = () => {
     firstName: '',
     lastName: '',
     email: '',
-    phone: ''
+    phone: '',
+    isActive: true
   })
 
   // Load user roles count statistics
@@ -90,13 +91,13 @@ export const UserManager = () => {
           email: searchEmail.trim() || undefined,
           phone: searchPhone.trim() || undefined,
           page: page,
-          size: 10,
+          size: 6,
           sort: 'id,desc'
         })
       } else {
         res = await userApi.getUsers({
           page: page,
-          size: 10,
+          size: 6,
           sort: 'id,desc'
         })
       }
@@ -265,7 +266,8 @@ export const UserManager = () => {
       firstName: user.firstName || '',
       lastName: user.lastName || '',
       email: user.email || '',
-      phone: user.phone || ''
+      phone: user.phone || '',
+      isActive: user.isActive !== false
     })
     setIsEditModalOpen(true)
   }
@@ -287,7 +289,8 @@ export const UserManager = () => {
         firstName: editForm.firstName,
         lastName: editForm.lastName,
         email: editForm.email,
-        phone: editForm.phone
+        phone: editForm.phone,
+        isActive: editForm.isActive
       })
       toast.success(`Cập nhật thông tin tài khoản ${editingUser.username} thành công!`)
       setIsEditModalOpen(false)
@@ -427,7 +430,7 @@ export const UserManager = () => {
                 </tr>
               ) : (
                 users.map(u => {
-                  const isLocked = u.enabled === false || u.deleted === true
+                  const isLocked = u.isActive === false
                   const isCustomer = !hasRole(u, 'ADMIN') && !hasRole(u, 'STAFF')
                   return (
                     <tr key={u.userId || u.username} className="hover:bg-black/[0.01] transition-colors">
@@ -609,6 +612,19 @@ export const UserManager = () => {
                   placeholder="09xx xxx xxx"
                   className="w-full p-2.5 border border-gray-200 focus:outline-none focus:border-brand-charcoal rounded-none font-sans"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-semibold uppercase text-brand-muted text-[9.5px] tracking-wider">Trạng thái hoạt động</label>
+                <select
+                  name="isActive"
+                  value={editForm.isActive ? 'true' : 'false'}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, isActive: e.target.value === 'true' }))}
+                  className="w-full p-2.5 border border-gray-200 focus:outline-none focus:border-brand-charcoal rounded-none font-sans bg-white"
+                >
+                  <option value="true">Hoạt động (Active)</option>
+                  <option value="false">Khóa tài khoản (Locked)</option>
+                </select>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">

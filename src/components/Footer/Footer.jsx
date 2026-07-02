@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { NewsletterForm } from './NewsletterForm.jsx'
@@ -36,18 +37,27 @@ export const Footer = () => {
       className="bg-brand-dark text-gray-300 py-16 md:py-20"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div id="about" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
-          {/* Brand Column */}
-          <div>
-            <h3 className="text-2xl font-display font-bold text-white mb-4">
-              OUTTA
-            </h3>
-            <p className="text-sm text-gray-400 mb-6">
-              Thời trang nữ cao cấp tôn vinh phong cách và cá tính riêng của bạn.
-            </p>
+        <div id="about" className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+          {/* Brand + Newsletter Column */}
+          <div className="space-y-8">
             <div>
-              <h4 className="text-sm font-semibold text-white mb-4">Theo Dõi Chúng Tôi</h4>
-              <SocialLinks links={socialLinks} />
+              <h3 className="text-2xl font-display font-bold text-white mb-4">
+                OUTTA
+              </h3>
+              <p className="text-sm text-gray-400 mb-6">
+                Thời trang nữ cao cấp tôn vinh phong cách và cá tính riêng của bạn.
+              </p>
+              <div>
+                <h4 className="text-sm font-semibold text-white mb-4">Theo Dõi Chúng Tôi</h4>
+                <SocialLinks links={socialLinks} />
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <h4 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">
+                Bản Tin
+              </h4>
+              <NewsletterForm />
             </div>
           </div>
 
@@ -58,28 +68,26 @@ export const Footer = () => {
                 {column.heading}
               </h4>
               <ul className="space-y-2">
-                {column.links.map(link => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-sm text-gray-400 hover:text-brand-blush
-                                 transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
+                {column.links.map(link => {
+                  const isInternal = link.href.startsWith('/')
+                  const linkClass = "text-sm text-gray-400 hover:text-brand-blush transition-colors"
+                  return (
+                    <li key={link.label}>
+                      {isInternal ? (
+                        <Link to={link.href} className={linkClass}>
+                          {link.label}
+                        </Link>
+                      ) : (
+                        <a href={link.href} className={linkClass}>
+                          {link.label}
+                        </a>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
-
-          {/* Newsletter Column */}
-          <div>
-            <h4 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">
-              Bản Tin
-            </h4>
-            <NewsletterForm />
-          </div>
         </div>
 
         {/* Divider */}

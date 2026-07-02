@@ -1,19 +1,31 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import cartApi from '../api/cartApi'
 import productApi from '../api/productApi'
 import { products as localProducts } from '../data/products'
+import { getIsLoggedIn } from '../utils/auth'
+
+const CART_STORAGE_KEY = 'pee_cart_items'
+const MAX_ITEM_QUANTITY = 99
+
+/**
+ * Tạo unique key cho cart item dựa trên product + variant (size + color)
+ * BIZ-02 FIX: Tránh gộp chung các variant khác nhau của cùng một sản phẩm
+ */
+const getCartItemKey = (product) => {
+  const size = (product.selectedSize || '').toUpperCase()
+  const color = (product.selectedColor || '').toLowerCase()
+  return `${product.id}-${size}-${color}`
+}
 
 export const useCart = () => {
   const [cartItems, setCartItems] = useState([])
   const [loading, setLoading] = useState(false)
 
-  // Kiểm tra trạng thái đăng nhập
-  const isLoggedIn = !!localStorage.getItem('accessToken')
-
   // Lấy giỏ hàng từ Backend
   const fetchBackendCart = useCallback(async () => {
-    if (!isLoggedIn) return
+    // CRIT-01 FIX: Gọi hàm thay vì đọc stale const
+    if (!getIsLoggedIn()) return
     try {
       setLoading(true)
       const response = await cartApi.getMyCart()
@@ -43,34 +55,35 @@ export const useCart = () => {
           }
         })
         setCartItems(mappedItems)
-        localStorage.setItem('pee_cart_items', JSON.stringify(mappedItems))
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(mappedItems))
       }
     } catch (err) {
       console.error('Lỗi khi lấy giỏ hàng từ backend:', err)
     } finally {
       setLoading(false)
     }
-  }, [isLoggedIn])
+  }, [])
 
   // Lấy giỏ hàng ban đầu khi load trang
   useEffect(() => {
-    if (isLoggedIn) {
+    if (getIsLoggedIn()) {
       fetchBackendCart()
     } else {
       // Nếu chưa đăng nhập, đọc từ localStorage như cũ
       try {
-        const saved = localStorage.getItem('pee_cart_items')
+        const saved = localStorage.getItem(CART_STORAGE_KEY)
         setCartItems(saved ? JSON.parse(saved) : [])
       } catch (e) {
         console.error('Lỗi đọc giỏ hàng từ localStorage:', e)
         setCartItems([])
       }
     }
-  }, [isLoggedIn, fetchBackendCart])
+  }, [fetchBackendCart])
 
   // Thêm sản phẩm vào giỏ hàng
+  // BIZ-08 FIX: Không toast ở đây — để caller tự toast, tránh double toast
   const addItem = useCallback(async (product, quantity = 1) => {
-    if (isLoggedIn) {
+    if (getIsLoggedIn()) {
       try {
         setLoading(true)
         let variantId = product.productVariantId
@@ -103,7 +116,6 @@ export const useCart = () => {
           productVariantId: variantId,
           quantity: quantity
         })
-        toast.success(`Đã thêm "${product.name}" vào giỏ hàng hệ thống!`)
         await fetchBackendCart()
       } catch (err) {
         console.error('Lỗi khi thêm sản phẩm vào giỏ hàng backend:', err)
@@ -112,27 +124,30 @@ export const useCart = () => {
         setLoading(false)
       }
     } else {
-      // Logic LocalStorage khi chưa đăng nhập
+      // BIZ-02 FIX: Dedup bằng product+size+color thay vì chỉ product.id
       setCartItems(prev => {
-        const existing = prev.find(item => item.id === product.id)
+        const itemKey = getCartItemKey(product)
+        const existing = prev.find(item => getCartItemKey(item) === itemKey)
         let newItems
         if (existing) {
+          // BIZ-03 FIX: Giới hạn số lượng tối đa
           newItems = prev.map(item =>
-            item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
+            getCartItemKey(item) === itemKey
+              ? { ...item, quantity: Math.min(item.quantity + quantity, MAX_ITEM_QUANTITY) }
+              : item
           )
         } else {
-          newItems = [...prev, { ...product, quantity }]
+          newItems = [...prev, { ...product, quantity: Math.min(quantity, MAX_ITEM_QUANTITY) }]
         }
-        localStorage.setItem('pee_cart_items', JSON.stringify(newItems))
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems))
         return newItems
       })
-      toast.success(`Đã thêm "${product.name}" vào giỏ hàng tạm thời!`)
     }
-  }, [isLoggedIn, fetchBackendCart])
+  }, [fetchBackendCart])
 
   // Xóa sản phẩm khỏi giỏ hàng
   const removeItem = useCallback(async (cartItemId) => {
-    if (isLoggedIn) {
+    if (getIsLoggedIn()) {
       try {
         setLoading(true)
         await cartApi.removeItem(cartItemId)
@@ -146,11 +161,11 @@ export const useCart = () => {
     } else {
       setCartItems(prev => {
         const newItems = prev.filter(item => item.id !== cartItemId)
-        localStorage.setItem('pee_cart_items', JSON.stringify(newItems))
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems))
         return newItems
       })
     }
-  }, [isLoggedIn, fetchBackendCart])
+  }, [fetchBackendCart])
 
   // Cập nhật số lượng sản phẩm trong giỏ hàng
   const updateQuantity = useCallback(async (cartItemId, quantity) => {
@@ -159,10 +174,13 @@ export const useCart = () => {
       return
     }
 
-    if (isLoggedIn) {
+    // BIZ-03 FIX: Giới hạn số lượng tối đa
+    const clampedQty = Math.min(quantity, MAX_ITEM_QUANTITY)
+
+    if (getIsLoggedIn()) {
       try {
         setLoading(true)
-        await cartApi.updateItem(cartItemId, { quantity })
+        await cartApi.updateItem(cartItemId, { quantity: clampedQty })
         await fetchBackendCart()
       } catch (err) {
         console.error('Lỗi cập nhật số lượng trên backend:', err)
@@ -173,17 +191,17 @@ export const useCart = () => {
     } else {
       setCartItems(prev => {
         const newItems = prev.map(item =>
-          item.id === cartItemId ? { ...item, quantity } : item
+          item.id === cartItemId ? { ...item, quantity: clampedQty } : item
         )
-        localStorage.setItem('pee_cart_items', JSON.stringify(newItems))
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems))
         return newItems
       })
     }
-  }, [isLoggedIn, removeItem, fetchBackendCart])
+  }, [removeItem, fetchBackendCart])
 
   // Xóa toàn bộ giỏ hàng
   const clearCart = useCallback(async () => {
-    if (isLoggedIn) {
+    if (getIsLoggedIn()) {
       try {
         setLoading(true)
         await cartApi.clearCart()
@@ -195,9 +213,9 @@ export const useCart = () => {
       }
     } else {
       setCartItems([])
-      localStorage.setItem('pee_cart_items', JSON.stringify([]))
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify([]))
     }
-  }, [isLoggedIn, fetchBackendCart])
+  }, [fetchBackendCart])
 
   // Tự động khôi phục sản phẩm chọn dở sau khi đăng nhập thành công
   useEffect(() => {
@@ -208,6 +226,7 @@ export const useCart = () => {
         const { product, action } = JSON.parse(pendingStr)
         addItem(product, 1).then(() => {
           sessionStorage.removeItem('pendingPurchase')
+          toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
           if (action === 'buy') {
             setTimeout(() => {
               window.location.href = '/cart'
@@ -234,3 +253,4 @@ export const useCart = () => {
     loading
   }
 }
+

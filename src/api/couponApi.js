@@ -21,6 +21,13 @@ const couponApi = {
   // Admin lấy tất cả danh sách coupon (bao gồm cả đã xóa mềm)
   getCouponsForAdmin: (params) => {
     return axiosClient.get('/coupons/admin', { params });
+  },
+
+  // Phục hồi coupon đã xóa mềm (Admin)
+  restoreCoupon: (id) => {
+    return axiosClient.put('/coupons/restore', null, {
+      params: { id }
+    });
   }
 };
 
