@@ -58,7 +58,39 @@ function App() {
   return (
     <ErrorBoundary>
       <CartProvider>
-        <Toaster position="top-right" reverseOrder={false} />
+        <Toaster
+          position="top-center"
+          reverseOrder={false}
+          containerStyle={{
+            zIndex: 999999,
+          }}
+          toastOptions={{
+            duration: 3500,
+            style: {
+              zIndex: 999999,
+              borderRadius: '14px',
+              background: '#0f172a',
+              color: '#f8fafc',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
+              padding: '12px 24px',
+              fontSize: '14px',
+              fontWeight: '600',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#ffffff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#f43f5e',
+                secondary: '#ffffff',
+              },
+            },
+          }}
+        />
         <Routes>
           {/* Landing Page */}
           <Route

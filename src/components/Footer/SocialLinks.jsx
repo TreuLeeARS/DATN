@@ -44,7 +44,7 @@ export const SocialLinks = ({ links = defaultLinks }) => {
 
 const defaultLinks = [
   { platform: 'Instagram', href: '#', icon: 'instagram' },
-  { platform: 'Facebook', href: '#', icon: 'facebook' },
+  { platform: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61591331740630', icon: 'facebook' },
   { platform: 'GitHub', href: '#', icon: 'github' },
   { platform: 'YouTube', href: '#', icon: 'youtube' },
 ]

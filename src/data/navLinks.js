@@ -40,7 +40,7 @@ export const socialLinks = [
   },
   {
     platform: 'Facebook',
-    href: '#',
+    href: 'https://www.facebook.com/profile.php?id=61591331740630',
     icon: 'facebook',
   },
   {

@@ -234,6 +234,17 @@ export const PopupManager = () => {
                     <span className="text-[10px] font-semibold text-brand-muted uppercase block">Nội dung chi tiết</span>
                     <p className="text-xs text-brand-muted mt-0.5 line-clamp-3 leading-relaxed">{popup.description}</p>
                   </div>
+
+                  {(popup.createdAt || popup.updatedAt) && (
+                    <div className="text-[9.5px] text-gray-500 font-normal space-y-0.5 select-none pt-2 border-t border-gray-100">
+                      {popup.createdAt && (
+                        <p>Tạo: {popup.createdBy || 'Hệ thống'} ({new Date(popup.createdAt).toLocaleString('vi-VN')})</p>
+                      )}
+                      {popup.updatedAt && (popup.lastModifiedBy || popup.updatedAt !== popup.createdAt) && (
+                        <p>Sửa: {popup.lastModifiedBy || 'Hệ thống'} ({new Date(popup.updatedAt).toLocaleString('vi-VN')})</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions row */}

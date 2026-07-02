@@ -289,7 +289,19 @@ export const OrderManager = () => {
                   const orderDate = o.createdAt ? new Date(o.createdAt).toLocaleDateString('vi-VN') : 'N/A'
                   return (
                     <tr key={o.orderId} className="hover:bg-black/[0.01] transition-colors">
-                      <td className="py-4 px-4 font-bold text-brand-charcoal">#{o.orderId}</td>
+                      <td className="py-4 px-4">
+                        <p className="font-bold text-brand-charcoal">#{o.orderId}</p>
+                        {(o.createdAt || o.orderDate || o.updatedAt) && (
+                          <div className="text-[9px] text-brand-muted/70 mt-1 font-normal space-y-0.5 select-none normal-case">
+                            {(o.createdAt || o.orderDate) && (
+                              <p>Tạo: {o.createdBy || shipInfo.fullName || 'Khách hàng'} ({new Date(o.createdAt || o.orderDate).toLocaleString('vi-VN')})</p>
+                            )}
+                            {o.updatedAt && (
+                              <p>Sửa: {o.lastModifiedBy || 'Hệ thống'} ({new Date(o.updatedAt).toLocaleString('vi-VN')})</p>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-4 px-4 font-medium text-brand-charcoal">{shipInfo.fullName}</td>
                       <td className="py-4 px-4 text-brand-muted">{shipInfo.phone}</td>
                       <td className="py-4 px-4 text-brand-muted">{orderDate}</td>

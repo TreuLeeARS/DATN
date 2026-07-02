@@ -436,7 +436,17 @@ export const UserManager = () => {
                     <tr key={u.userId || u.username} className="hover:bg-black/[0.01] transition-colors">
                       <td className="py-4 px-4">
                         <p className="font-semibold text-brand-charcoal">{u.username}</p>
-                        <p className="text-[9px] text-brand-muted mt-0.5">UID: {u.userId || 'N/A'}</p>
+                        <p className="text-[9px] text-brand-muted mt-0.5 font-mono">UID: {u.userId || 'N/A'}</p>
+                        {(u.createdAt || u.updatedAt) && (
+                          <div className="text-[9px] text-brand-muted/70 mt-1 font-normal space-y-0.5 select-none normal-case">
+                            {u.createdAt && (
+                              <p>Tạo: {u.createdBy || 'Hệ thống'} ({new Date(u.createdAt).toLocaleString('vi-VN')})</p>
+                            )}
+                            {u.updatedAt && (u.lastModifiedBy || u.updatedAt !== u.createdAt) && (
+                              <p>Sửa: {u.lastModifiedBy || 'Hệ thống'} ({new Date(u.updatedAt).toLocaleString('vi-VN')})</p>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="py-4 px-4 font-medium text-brand-charcoal">
                         {u.lastName || u.firstName ? `${u.lastName || ''} ${u.firstName || ''}`.trim() : 'Chưa cập nhật'}

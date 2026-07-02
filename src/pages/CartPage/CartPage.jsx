@@ -7,7 +7,7 @@ import { Header } from '../../components/Header/Header.jsx'
 import { Footer } from '../../components/Footer/Footer.jsx'
 import { useCartContext } from '../../context/CartContext.jsx'
 import orderApi from '../../api/orderApi.js'
-import paymentApi from '../../api/paymentApi.js'
+import { AddressSelector } from '../../components/AddressSelector/AddressSelector.jsx'
 
 export const CartPage = () => {
   const navigate = useNavigate()
@@ -348,25 +348,18 @@ export const CartPage = () => {
                       )}
                     </div>
 
-                    {/* Address */}
-                    <div>
-                      <label htmlFor="address" className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-2">
-                        Địa chỉ nhận hàng chi tiết
-                      </label>
-                      <textarea
-                        name="address"
-                        id="address"
-                        rows="3"
-                        value={form.address}
-                        onChange={handleChange}
-                        placeholder="Số nhà, Tên đường, Phường/Xã, Quận/Huyện, Tỉnh/Thành Phố..."
-                        className="input-base resize-none"
-                        disabled={isSubmitting}
-                      />
-                      {errors.address && (
-                        <p className="text-red-400 text-xs mt-2 animate-slide-up">{errors.address}</p>
-                      )}
-                    </div>
+                    {/* Enhanced Location & Address Selector */}
+                    <AddressSelector
+                      value={form.address}
+                      onAddressChange={(newAddr) => {
+                        setForm(prev => ({ ...prev, address: newAddr }))
+                        if (errors.address) {
+                          setErrors(prev => ({ ...prev, address: '' }))
+                        }
+                      }}
+                      disabled={isSubmitting}
+                      error={errors.address}
+                    />
 
                     {/* Payment Method Selector */}
                     <div className="mt-4">

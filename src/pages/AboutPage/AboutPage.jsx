@@ -87,7 +87,7 @@ export const AboutPage = () => {
                     </svg>
                     <div>
                       <p className="font-semibold text-brand-charcoal">Địa Chỉ:</p>
-                      <p>180A Cao Lỗ, Phường 4, Quận 8, TP. Hồ Chí Minh</p>
+                      <p>123 Hùng Vương, Biên Hòa, Vietnam, 60000</p>
                     </div>
                   </div>
 
@@ -107,7 +107,7 @@ export const AboutPage = () => {
                     </svg>
                     <div>
                       <p className="font-semibold text-brand-charcoal">Email phản hồi:</p>
-                      <p>contact@outta.vn</p>
+                      <p>outtastudio.vn@gmail.com</p>
                     </div>
                   </div>
 
@@ -120,30 +120,30 @@ export const AboutPage = () => {
                       <p>9:00 AM - 10:00 PM (Hằng ngày)</p>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <div>
-                <a 
-                  href="https://maps.google.com/?q=180A+Cao+L%E1%BB%99+Ph%C6%B0%E1%BB%9Dng+4+Qu%E1%BA%ADn+8"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-brand-charcoal text-white hover:bg-brand-dark px-6 py-3 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-95 shadow-sm"
-                >
-                  <svg className="w-4.5 h-4.5 text-brand-blush" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Đường đi Google Maps
-                </a>
+                  <div className="pt-2">
+                    <a 
+                      href="https://maps.google.com/?q=123+Hùng+Vương,+Biên+Hòa"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-brand-charcoal text-white text-xs font-semibold tracking-widest uppercase px-6 py-3 hover:bg-brand-dark transition-colors duration-200"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Đường đi Google Maps
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Right side Google Maps iframe (3 cols) */}
             <div className="lg:col-span-3 h-[380px] sm:h-[450px] border border-gray-150 relative bg-gray-50">
               <iframe
-                title="Bản đồ chỉ đường đến showroom OUTTA Cao Lỗ Quận 8"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.9544103877597!2d106.67786627583794!3d10.738002459897368!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f62a90e5dbd%3A0x14c072eb16d2218e!2zMTgwQSBDYW8gTOG7lywgUGjGsOG7nW5nIDQsIFF14bqtbiA4LCBI4buTIENow60gTWluaCwgVmnhu4d0IE5hbQ!5e0!3m2!1svi!2s!4v1719830000000!5m2!1svi!2s"
+                title="Bản đồ chỉ đường đến showroom OUTTA 123 Hùng Vương, Biên Hòa"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3917.3871403215286!2d106.8200!3d10.9570!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3174dcb8e15469cf%3A0x8681e8ee6ec02c81!2zMTIzIEjDuW5nIFbGsMahbmcsIEJpw6puIEjDsmEsIMSQ4buTbmcgTmFp!5e0!3m2!1svi!2s!4v1719830000000!5m2!1svi!2s"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
