@@ -75,8 +75,20 @@ export const CouponManager = () => {
   // Create Coupon submit handler
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!formData.couponCode.trim() || !formData.discountValue || !formData.endDate) {
-      toast.error('Vui lòng điền đầy đủ thông tin bắt buộc.')
+    
+    const missingFields = []
+    if (!formData.couponCode.trim()) {
+      missingFields.push('Mã coupon')
+    }
+    if (!formData.discountValue || Number(formData.discountValue) <= 0) {
+      missingFields.push('Giá trị giảm (> 0)')
+    }
+    if (!formData.endDate) {
+      missingFields.push('Ngày hết hạn')
+    }
+
+    if (missingFields.length > 0) {
+      toast.error(`Vui lòng nhập/chọn thông tin còn thiếu: ${missingFields.join(', ')}`)
       return
     }
 
@@ -224,6 +236,16 @@ export const CouponManager = () => {
                       <td className="py-4 px-4 font-bold text-brand-charcoal uppercase tracking-wider">
                         {c.couponCode}
                         <p className="text-[9px] text-brand-muted mt-0.5 font-normal">ID: {c.couponId}</p>
+                        {(c.createdAt || c.createdBy || c.updatedAt || c.lastModifiedBy) && (
+                          <div className="text-[9px] text-brand-muted/70 mt-1 font-normal normal-case space-y-0.5 select-none">
+                            {c.createdAt && (
+                              <p>Tạo: {c.createdBy || 'Hệ thống'} ({new Date(c.createdAt).toLocaleString('vi-VN')})</p>
+                            )}
+                            {c.updatedAt && (c.lastModifiedBy || c.updatedAt !== c.createdAt) && (
+                              <p>Sửa: {c.lastModifiedBy || 'Hệ thống'} ({new Date(c.updatedAt).toLocaleString('vi-VN')})</p>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="py-4 px-4 text-center font-bold text-brand-charcoal">
                         {formatPrice(c.discountValue)}

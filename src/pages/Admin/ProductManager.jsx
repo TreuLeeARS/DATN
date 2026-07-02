@@ -235,15 +235,25 @@ export const ProductManager = () => {
     e.preventDefault()
     const activeImageUrls = productForm.imageUrls.filter(url => url.trim() !== '')
 
-    if (
-      !productForm.name.trim() ||
-      !productForm.description.trim() ||
-      !productForm.baseprice ||
-      Number(productForm.baseprice) <= 0 ||
-      !productForm.categoryId ||
-      activeImageUrls.length === 0
-    ) {
-      toast.error('Vui lòng nhập đầy đủ thông tin: Tên, Mô tả, Giá cơ bản (> 0), Danh mục và ít nhất một Đường dẫn ảnh.')
+    const missingFields = []
+    if (!productForm.name.trim()) {
+      missingFields.push('Tên sản phẩm')
+    }
+    if (!productForm.baseprice || Number(productForm.baseprice) <= 0) {
+      missingFields.push('Giá cơ bản (> 0)')
+    }
+    if (!productForm.categoryId) {
+      missingFields.push('Danh mục')
+    }
+    if (!productForm.description.trim()) {
+      missingFields.push('Mô tả chi tiết')
+    }
+    if (activeImageUrls.length === 0) {
+      missingFields.push('Đường dẫn hình ảnh (ít nhất 1 ảnh)')
+    }
+
+    if (missingFields.length > 0) {
+      toast.error(`Vui lòng nhập/chọn các thông tin còn thiếu: ${missingFields.join(', ')}`)
       return
     }
 
@@ -522,6 +532,16 @@ export const ProductManager = () => {
                         <td className="py-3.5 px-4">
                           <p className="font-semibold text-brand-charcoal hover:underline">{p.name}</p>
                           <p className="text-[10px] text-brand-muted mt-0.5">ID: {p.productId}</p>
+                          {(p.createdAt || p.createdBy || p.updatedAt || p.lastModifiedBy) && (
+                            <div className="text-[9px] text-brand-muted/70 mt-1 font-normal space-y-0.5 select-none normal-case">
+                              {p.createdAt && (
+                                <p>Tạo: {p.createdBy || 'Hệ thống'} ({new Date(p.createdAt).toLocaleString('vi-VN')})</p>
+                              )}
+                              {p.updatedAt && (p.lastModifiedBy || p.updatedAt !== p.createdAt) && (
+                                <p>Sửa: {p.lastModifiedBy || 'Hệ thống'} ({new Date(p.updatedAt).toLocaleString('vi-VN')})</p>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 font-semibold text-brand-charcoal">
                           {formatVND(p.baseprice)}

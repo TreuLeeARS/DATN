@@ -469,18 +469,30 @@ export const CategoryManager = () => {
                             searchTerm.trim() === '' && <span className="w-6 h-6 inline-block" />
                           )}
 
-                          <span
-                            onClick={() => hasChildren(cat.id) && searchTerm.trim() === '' && toggleExpand(cat.id)}
-                            className={`${
-                              isRoot
-                                ? 'text-brand-charcoal font-bold text-sm'
-                                : 'text-gray-700 text-sm font-normal'
-                            } ${!cat.isActive ? 'line-through text-brand-muted' : ''} ${
-                              hasChildren(cat.id) && searchTerm.trim() === '' ? 'cursor-pointer hover:underline' : ''
-                            }`}
-                          >
-                            {cat.name}
-                          </span>
+                          <div className="flex flex-col">
+                            <span
+                              onClick={() => hasChildren(cat.id) && searchTerm.trim() === '' && toggleExpand(cat.id)}
+                              className={`${
+                                isRoot
+                                  ? 'text-brand-charcoal font-bold text-sm'
+                                  : 'text-gray-700 text-sm font-normal'
+                              } ${!cat.isActive ? 'line-through text-brand-muted' : ''} ${
+                                hasChildren(cat.id) && searchTerm.trim() === '' ? 'cursor-pointer hover:underline' : ''
+                              }`}
+                            >
+                              {cat.name}
+                            </span>
+                            {(cat.createdAt || cat.updatedAt) && (
+                              <div className="text-[9.5px] text-brand-muted/70 mt-1.5 font-normal space-y-0.5 select-none normal-case">
+                                {cat.createdAt && (
+                                  <p>Tạo lúc: {new Date(cat.createdAt).toLocaleString('vi-VN')}</p>
+                                )}
+                                {cat.updatedAt && cat.updatedAt !== cat.createdAt && (
+                                  <p>Sửa lúc: {new Date(cat.updatedAt).toLocaleString('vi-VN')}</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
 
