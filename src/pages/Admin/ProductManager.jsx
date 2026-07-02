@@ -41,7 +41,9 @@ export const ProductManager = () => {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
+  const [totalElements, setTotalElements] = useState(0)
   
   // Modals state
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
@@ -104,7 +106,7 @@ export const ProductManager = () => {
 
   useEffect(() => {
     fetchProducts()
-  }, [page])
+  }, [page, pageSize])
 
   // Fetch when search query is cleared
   useEffect(() => {
@@ -136,18 +138,19 @@ export const ProductManager = () => {
         res = await productApi.searchProducts({
           name: searchQuery.trim(),
           page: page,
-          size: 10
+          size: pageSize
         })
       } else {
         res = await productApi.getAllProductsForAdmin({
           page: page,
-          size: 10,
+          size: pageSize,
           sort: 'productId,desc'
         })
       }
       if (res && res.data) {
         setProducts(res.data.content || [])
         setTotalPages(res.data.totalPages || 1)
+        setTotalElements(res.data.totalElements || (res.data.content ? res.data.content.length : 0))
       }
     } catch (err) {
       console.error('Error fetching products:', err)
@@ -160,6 +163,9 @@ export const ProductManager = () => {
   // --- PRODUCT CRUD ACTIONS ---
 
   const handleOpenProductModal = (prod = null) => {
+    // Scroll smoothly to top of window so modal pops up right in front of eyes
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+
     if (prod) {
       setEditingProduct(prod)
       // Auto-match categoryId by c.id or c.categoryId or categoryName
@@ -329,6 +335,8 @@ export const ProductManager = () => {
   }
 
   const handleOpenVariantModal = (variant = null) => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+
     if (!selectedProductForVariants) return
 
     if (variant) {
@@ -591,28 +599,59 @@ export const ProductManager = () => {
             </table>
           </div>
 
-          {/* Pagination Footer */}
-          {totalPages > 1 && (
-            <div className="flex justify-between items-center px-4 py-3 border-t border-gray-100 bg-gray-50/40 text-xs mt-auto">
+          {/* Full Interactive Pagination Controls */}
+          <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 border-t border-gray-100 bg-gray-50/60 text-xs gap-3 mt-auto">
+            <div className="flex items-center gap-2 text-gray-600 font-medium">
+              <span>Hiển thị</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value))
+                  setPage(0)
+                }}
+                className="px-2 py-1 border border-gray-200 rounded-lg bg-white text-xs font-semibold focus:outline-none focus:border-brand-charcoal"
+              >
+                <option value={5}>5 sản phẩm/trang</option>
+                <option value={10}>10 sản phẩm/trang</option>
+                <option value={20}>20 sản phẩm/trang</option>
+                <option value={50}>50 sản phẩm/trang</option>
+              </select>
+              <span className="text-gray-400">| Tổng: <strong>{totalElements}</strong> sản phẩm</span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
               <button
                 disabled={page === 0}
                 onClick={() => setPage((prev) => Math.max(0, prev - 1))}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors font-medium text-gray-700"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors font-semibold text-gray-700"
               >
                 ← Trước
               </button>
-              <span className="font-semibold text-gray-600">
-                Trang {page + 1} / {totalPages}
-              </span>
+              
+              {/* Numbered page buttons */}
+              {Array.from({ length: totalPages }, (_, i) => i).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    page === pageNum
+                      ? 'bg-brand-charcoal text-white shadow-xs'
+                      : 'border border-gray-200 hover:bg-white text-gray-700'
+                  }`}
+                >
+                  {pageNum + 1}
+                </button>
+              ))}
+
               <button
                 disabled={page >= totalPages - 1}
                 onClick={() => setPage((prev) => Math.min(totalPages - 1, prev + 1))}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors font-medium text-gray-700"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors font-semibold text-gray-700"
               >
                 Sau →
               </button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* ─── RIGHT: VARIANTS LIST (5 COLS) ─── */}
@@ -723,10 +762,10 @@ export const ProductManager = () => {
         </div>
       </div>
 
-      {/* ─── MODAL: PRODUCT CREATE / UPDATE ─── */}
+      {/* ─── MODAL: PRODUCT CREATE / UPDATE (PERFECTLY CENTERED IN VIEWPORT) ─── */}
       {isProductModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-xl bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto animate-fade-in">
+          <div className="relative my-auto w-full max-w-xl bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 md:p-8 space-y-6 max-h-[88vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-gray-100 pb-4">
               <div>
                 <h3 className="text-base font-bold uppercase tracking-wider text-brand-charcoal">
@@ -868,10 +907,10 @@ export const ProductManager = () => {
         </div>
       )}
 
-      {/* ─── MODAL: VARIANT CREATE / UPDATE ─── */}
+      {/* ─── MODAL: VARIANT CREATE / UPDATE (PERFECTLY CENTERED IN VIEWPORT) ─── */}
       {isVariantModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 md:p-8 space-y-5">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto animate-fade-in">
+          <div className="relative my-auto w-full max-w-md bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 md:p-8 space-y-5">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-base font-bold uppercase tracking-wider text-brand-charcoal">
