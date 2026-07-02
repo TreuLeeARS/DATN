@@ -41,7 +41,7 @@ export const ProductManager = () => {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(6)
+  const [pageSize, setPageSize] = useState(9)
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('')
@@ -487,7 +487,7 @@ export const ProductManager = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* ─── LEFT: PRODUCTS TABLE (7 COLS) ─── */}
-        <div className="lg:col-span-7 bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[560px]">
+        <div className="lg:col-span-7 bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[580px]">
           {/* Products Table Area */}
           <div className="overflow-x-auto flex-1">
             <table className="w-full text-left border-collapse">
@@ -614,10 +614,10 @@ export const ProductManager = () => {
                 }}
                 className="px-1.5 py-0.5 border border-gray-200 rounded text-[11px] font-semibold bg-white focus:outline-none"
               >
+                <option value={9}>9/trang (Mặc định)</option>
                 <option value={5}>5/trang</option>
-                <option value={6}>6/trang</option>
-                <option value={10}>10/trang</option>
-                <option value={20}>20/trang</option>
+                <option value={15}>15/trang</option>
+                <option value={30}>30/trang</option>
               </select>
               <span className="text-[11px] text-gray-400">({totalElements} sp)</span>
             </div>
@@ -657,7 +657,7 @@ export const ProductManager = () => {
         </div>
 
         {/* ─── RIGHT: VARIANTS LIST (5 COLS) ─── */}
-        <div className="lg:col-span-5 bg-white border border-gray-100 rounded-2xl shadow-sm p-4 h-[560px] flex flex-col">
+        <div className="lg:col-span-5 bg-white border border-gray-100 rounded-2xl shadow-sm p-4 min-h-[580px] flex flex-col">
           {selectedProductForVariants ? (
             <div className="flex-1 flex flex-col space-y-3 overflow-hidden">
               {/* Variant Section Header */}
