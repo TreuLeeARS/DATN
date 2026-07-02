@@ -312,7 +312,7 @@ export const ProductManager = () => {
           }
         } catch (err) {
           console.error('Error deleting product:', err)
-          toast.error('Lỗi khi xóa sản phẩm.')
+          toast.error(err.response?.data?.message || 'Lỗi khi xóa sản phẩm.')
         }
       },
       true
