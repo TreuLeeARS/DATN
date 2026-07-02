@@ -183,7 +183,7 @@ export const ProductManager = () => {
       const formData = new FormData()
       formData.append('file', file)
 
-      const res = await fetch('https://api.escuelajs.co/api/v1/files/upload', {
+      const res = await fetch('https://tmpfiles.org/api/v1/upload', {
         method: 'POST',
         body: formData
       })
@@ -193,10 +193,13 @@ export const ProductManager = () => {
       }
 
       const data = await res.json()
-      if (data && data.location) {
+      if (data && data.data && data.data.url) {
+        // Chuyển đổi link view sang link direct download để hiển thị được thẻ <img>
+        // Ví dụ: https://tmpfiles.org/12345/image.png -> https://tmpfiles.org/dl/12345/image.png
+        const directUrl = data.data.url.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/')
         setProductForm(prev => {
           const newUrls = [...prev.imageUrls]
-          newUrls[index] = data.location
+          newUrls[index] = directUrl
           return { ...prev, imageUrls: newUrls }
         })
         toast.success('Tải ảnh từ thiết bị lên thành công!')
