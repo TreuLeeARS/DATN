@@ -103,15 +103,6 @@ export const Hero = () => {
           </div>
         </div>
       </div>
-
-      {/* Scroll indicator */}
-      <div className="hidden md:flex absolute bottom-8 left-1/2 transform -translate-x-1/2
-                      flex-col items-center animate-bounce">
-        <span className="text-sm text-brand-muted mb-2">Cuộn xuống để khám phá</span>
-        <svg className="w-6 h-6 text-brand-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-        </svg>
-      </div>
     </section>
   )
 }
