@@ -359,7 +359,7 @@ export const ShopPage = () => {
     toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
   }
 
-  const handleBuyNow = (product) => {
+  const handleBuyNow = async (product) => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
       sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'buy' }))
@@ -367,7 +367,10 @@ export const ShopPage = () => {
       showAuthToast('Đăng nhập để tiến hành mua sắm ngay.')
       return
     }
-    addItem(product, 1)
+    await addItem(product, 1)
+    sessionStorage.setItem('checkoutOnlyName', product.name)
+    sessionStorage.setItem('checkoutOnlySize', product.selectedSize || 'S')
+    sessionStorage.setItem('checkoutOnlyColor', product.selectedColor || '')
     sessionStorage.setItem('checkoutOnlyProductId', product.id)
     navigate('/cart')
   }

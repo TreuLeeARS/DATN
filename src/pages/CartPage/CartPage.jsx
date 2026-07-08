@@ -25,15 +25,46 @@ export const CartPage = () => {
     }
   }, [navigate])
 
-  // Kiểm tra và khởi tạo sản phẩm được chọn thanh toán
+  // Kiểm tra và khởi tạo sản phẩm được chọn thanh toán khi click "Mua Ngay"
   useEffect(() => {
-    const checkoutOnlyId = sessionStorage.getItem('checkoutOnlyProductId')
-    if (checkoutOnlyId) {
-      // Chỉ tự động chọn nếu sản phẩm này đã xuất hiện trong giỏ hàng
-      const exists = cartItems.some(item => item.id === checkoutOnlyId)
-      if (exists) {
-        setSelectedItemIds([checkoutOnlyId])
+    const checkoutOnlyName = sessionStorage.getItem('checkoutOnlyName')
+    const checkoutOnlySize = sessionStorage.getItem('checkoutOnlySize')
+    const checkoutOnlyColor = sessionStorage.getItem('checkoutOnlyColor')
+    const checkoutOnlyProductId = sessionStorage.getItem('checkoutOnlyProductId')
+
+    if (checkoutOnlyName) {
+      const matched = cartItems.find(item => 
+        item.name.toLowerCase() === checkoutOnlyName.toLowerCase() &&
+        String(item.selectedSize).toUpperCase() === String(checkoutOnlySize || 'S').toUpperCase() &&
+        (checkoutOnlyColor ? String(item.selectedColor).toLowerCase() === String(checkoutOnlyColor).toLowerCase() : true)
+      )
+      if (matched) {
+        setSelectedItemIds([matched.id])
+        sessionStorage.removeItem('checkoutOnlyName')
+        sessionStorage.removeItem('checkoutOnlySize')
+        sessionStorage.removeItem('checkoutOnlyColor')
         sessionStorage.removeItem('checkoutOnlyProductId')
+        
+        // Cuộn mượt mà đến form điền thông tin đặt hàng
+        setTimeout(() => {
+          const el = document.getElementById('checkout-section')
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 150)
+      }
+    } else if (checkoutOnlyProductId) {
+      // Fallback cho giỏ hàng local cũ
+      const matched = cartItems.find(item => String(item.id).split('-')[0] === String(checkoutOnlyProductId))
+      if (matched) {
+        setSelectedItemIds([matched.id])
+        sessionStorage.removeItem('checkoutOnlyProductId')
+        setTimeout(() => {
+          const el = document.getElementById('checkout-section')
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 150)
       }
     }
   }, [cartItems])
@@ -136,6 +167,43 @@ export const CartPage = () => {
     setIsSubmitting(true)
 
     try {
+      // Đảm bảo dữ liệu giỏ hàng trên Backend DB luôn được bổ sung & làm tươi trước khi tạo đơn hàng
+      try {
+        if (selectedItems.length > 0) {
+          for (const item of selectedItems) {
+            let vId = item.productVariantId
+            if (!vId && item.name) {
+              try {
+                const searchRes = await productApi.searchProducts({ name: item.name })
+                const matchedProduct = searchRes.data?.content?.[0]
+                if (matchedProduct) {
+                  const detailRes = await productApi.getProductDetail(matchedProduct.productId)
+                  const variants = detailRes.data?.variants || []
+                  const found = variants.find(
+                    v => v.size.toUpperCase() === (item.selectedSize || 'S').toUpperCase() &&
+                         (item.selectedColor ? v.color.toLowerCase() === item.selectedColor.toLowerCase() : true)
+                  ) || variants.find(v => v.quantityInStock > 0) || variants[0]
+                  if (found) vId = found.productVariantId
+                }
+              } catch (e) {
+                console.warn('Variant lookup error:', e)
+              }
+            }
+            if (!vId) vId = item.id
+
+            if (vId) {
+              try {
+                await cartApi.addItem({ productVariantId: Number(vId), quantity: item.quantity || 1 })
+              } catch (addErr) {
+                console.warn('Cart item sync warning:', addErr)
+              }
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.warn('Cảnh báo đồng bộ giỏ hàng trước thanh toán:', syncErr)
+      }
+
       // CRIT-02 FIX: Gửi danh sách cartItemIds đã chọn thay vì checkout toàn bộ giỏ
       const checkoutData = {
         cartItemIds: selectedItemIds,
@@ -192,6 +260,12 @@ export const CartPage = () => {
       console.error('Lỗi khi thanh toán đơn hàng:', err)
       const errorMsg = err.response?.data?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại.'
       toast.error(errorMsg)
+      // Tự động đồng bộ giỏ hàng từ backend nếu có sản phẩm hết hạn giữ hàng
+      try {
+        await fetchCart()
+      } catch (e) {
+        console.error('Lỗi khi làm mới giỏ hàng:', e)
+      }
     } finally {
       isSubmittingRef.current = false
       setIsSubmitting(false)
@@ -302,7 +376,7 @@ export const CartPage = () => {
               
               {/* ═══════════ LEFT COLUMN: SHIPPING FORM OR PLACEHOLDER ═══════════ */}
               {selectedItemIds.length > 0 ? (
-                <div className="w-full lg:w-3/5 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm cart-anim-item animate-fade-in">
+                <div id="checkout-section" className="w-full lg:w-3/5 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm cart-anim-item animate-fade-in">
                   <h2 className="font-display text-2xl font-bold text-brand-charcoal mb-6 border-b border-gray-100 pb-4">
                     Thông tin giao hàng
                   </h2>
