@@ -435,7 +435,10 @@ export const ProductManager = () => {
           handleSelectProductVariants({ productId: prodId })
         } catch (err) {
           console.error('Error deleting variant:', err)
-          const msg = err.response?.data?.message || 'Lỗi khi xóa biến thể. Có thể biến thể này đã có trong đơn hàng lịch sử!'
+          let msg = err.response?.data?.message || ''
+          if (!msg || msg.includes('Lỗi hệ thống') || msg.includes('chưa được xử lý riêng')) {
+            msg = 'Không thể xóa biến thể này vì đã nằm trong lịch sử đơn hàng của hệ thống!'
+          }
           toast.error(msg)
         }
       },
