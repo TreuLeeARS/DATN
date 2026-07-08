@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
 import toast from 'react-hot-toast'
 import popupApi from '../../api/popupApi'
+import couponApi from '../../api/couponApi'
 
 export const ShopPromptModal = () => {
   const navigate = useNavigate()
@@ -14,28 +15,42 @@ export const ShopPromptModal = () => {
   const [popupData, setPopupData] = useState({
     header: 'Ưu Đãi Đặc Biệt 🎁',
     title: 'Tặng bạn món quà nhỏ làm quen!',
-    description: 'Tặng ngay mã giảm giá 15% cho đơn hàng đầu tiên của bạn tại OUTTA. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.'
+    description: 'Tặng ngay mã giảm giá cho đơn hàng đầu tiên của bạn tại OUTTA. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.'
   })
+  
+  const [promoCode, setPromoCode] = useState('PEESTART15') // Fallback default code
 
-  // Tải thông báo popup từ DB nếu có
+  // Tải thông báo popup và mã giảm giá từ DB
   useEffect(() => {
-    const fetchActivePopup = async () => {
+    const fetchActiveData = async () => {
       try {
-        const res = await popupApi.getPopups()
-        if (res && res.data && res.data.length > 0) {
-          // Lấy popup đầu tiên làm đại diện
-          const activePopup = res.data[0]
+        // 1. Tải thông báo popup
+        const popupRes = await popupApi.getPopups()
+        if (popupRes && popupRes.data && popupRes.data.length > 0) {
+          const activePopup = popupRes.data[0]
           setPopupData({
             header: activePopup.header || 'Ưu Đãi Đặc Biệt 🎁',
             title: activePopup.title || 'Tặng bạn món quà nhỏ làm quen!',
-            description: activePopup.description || 'Tặng ngay mã giảm giá 15% cho đơn hàng đầu tiên của bạn tại OUTTA. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.'
+            description: activePopup.description || 'Tặng ngay mã giảm giá cho đơn hàng đầu tiên của bạn tại OUTTA. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.'
           })
         }
       } catch (err) {
-        // Bỏ qua lỗi 403 hoặc lỗi mạng và chạy bình thường với fallback mặc định
+        console.warn('Error fetching popup data:', err)
+      }
+      
+      try {
+        // 2. Tải mã giảm giá hoạt động thực tế từ DB để hiển thị trong popup
+        const couponRes = await couponApi.getCoupons({ page: 0, size: 10 })
+        if (couponRes && couponRes.data && couponRes.data.content && couponRes.data.content.length > 0) {
+          // Ưu tiên chọn mã giảm giá đầu tiên đang hoạt động trong DB
+          const firstCoupon = couponRes.data.content[0]
+          setPromoCode(firstCoupon.couponCode)
+        }
+      } catch (err) {
+        console.warn('Error fetching coupons for popup:', err)
       }
     }
-    fetchActivePopup()
+    fetchActiveData()
   }, [])
 
   // Chế độ demo: Chỉ kích hoạt thủ công khi URL có tham số ?demo=true
@@ -58,8 +73,16 @@ export const ShopPromptModal = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  const handleCopyPromo = (e) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(promoCode)
+    toast.success(`Đã sao chép mã giảm giá: ${promoCode}`, {
+      duration: 3000,
+      icon: '📋'
+    })
+  }
+
   const handleGetPromo = useCallback(() => {
-    sessionStorage.setItem('appliedPromoCode', 'PEESTART15')
     localStorage.setItem('shopPromptDismissedUntil', 'forever')
     
     // Animation đóng và chuyển hướng
@@ -70,9 +93,9 @@ export const ShopPromptModal = () => {
       ease: 'power2.in',
       onComplete: () => {
         setShow(false)
-        toast.success('Mã giảm giá PEESTART15 (giảm 15%) đã được áp dụng!', {
-          duration: 4000,
-          icon: '🎁'
+        toast('Mã giảm giá đã sẵn sàng! Bạn hãy tự nhập/dán mã này vào trang thanh toán nhé.', {
+          duration: 5000,
+          icon: '🛒'
         })
         navigate('/shop')
       }
@@ -209,9 +232,23 @@ export const ShopPromptModal = () => {
           <h3 className="font-display text-2xl font-bold text-brand-charcoal mb-3 pr-6 leading-tight">
             {popupData.title}
           </h3>
-          <p className="text-brand-muted text-sm leading-relaxed mb-6">
+          <p className="text-brand-muted text-sm leading-relaxed mb-4">
             {popupData.description}
           </p>
+
+          {/* Coupon Code Display Box with Copy Button */}
+          <div className="bg-brand-cream/60 border border-dashed border-brand-charcoal/30 rounded-xl p-3.5 mb-5 flex items-center justify-between gap-3 shadow-inner">
+            <div>
+              <p className="text-[9px] text-brand-muted uppercase font-bold tracking-wider">Mã giảm giá của bạn</p>
+              <p className="font-mono text-base font-extrabold text-brand-charcoal tracking-wider mt-0.5">{promoCode}</p>
+            </div>
+            <button
+              onClick={handleCopyPromo}
+              className="bg-brand-charcoal text-white hover:bg-brand-dark px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all cursor-pointer rounded"
+            >
+              Sao chép
+            </button>
+          </div>
 
           {/* Action buttons */}
           <div className="flex flex-col gap-2.5">

@@ -16,6 +16,8 @@ export const CartPage = () => {
 
   const [selectedItemIds, setSelectedItemIds] = useState([])
   const [dbCoupon, setDbCoupon] = useState(null)
+  const [promoInput, setPromoInput] = useState('')
+  const [promoLoading, setPromoLoading] = useState(false)
 
   // Tải thông tin coupon thực tế từ cơ sở dữ liệu nếu có mã giảm giá được áp dụng
   useEffect(() => {
@@ -170,6 +172,51 @@ export const CartPage = () => {
 
   const selectedItems = cartItems.filter(item => selectedItemIds.includes(item.id))
   const selectedTotal = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+
+  const handleApplyPromo = async () => {
+    if (!promoInput.trim()) {
+      toast.error('Vui lòng nhập mã giảm giá!')
+      return
+    }
+    if (selectedItemIds.length === 0) {
+      toast.error('Vui lòng chọn ít nhất một sản phẩm để áp dụng mã giảm giá!')
+      return
+    }
+    try {
+      setPromoLoading(true)
+      const res = await couponApi.getCoupons({ page: 0, size: 100 })
+      if (res && res.data && res.data.content) {
+        const found = res.data.content.find(
+          c => c.couponCode.toLowerCase().trim() === promoInput.toLowerCase().trim()
+        )
+        if (found) {
+          if (selectedTotal >= found.minimumOrderAmount) {
+            sessionStorage.setItem('appliedPromoCode', found.couponCode)
+            setDbCoupon(found)
+            toast.success(`Áp dụng thành công mã giảm giá: ${found.couponCode}!`)
+            setPromoInput('')
+          } else {
+            toast.error(`Đơn hàng chưa đạt giá trị tối thiểu ${formatVND(found.minimumOrderAmount)} để áp dụng mã này!`)
+          }
+        } else {
+          toast.error('Mã giảm giá không tồn tại hoặc đã hết hạn!')
+        }
+      } else {
+        toast.error('Không thể kiểm tra mã giảm giá lúc này.')
+      }
+    } catch (err) {
+      console.error('Error applying coupon:', err)
+      toast.error('Đã xảy ra lỗi khi áp dụng mã giảm giá.')
+    } finally {
+      setPromoLoading(false)
+    }
+  }
+
+  const handleRemovePromo = () => {
+    sessionStorage.removeItem('appliedPromoCode')
+    setDbCoupon(null)
+    toast.success('Đã gỡ mã giảm giá.')
+  }
 
   // Đọc mã giảm giá và tính toán số tiền giảm thực tế từ DB
   const appliedPromo = sessionStorage.getItem('appliedPromoCode')
@@ -655,6 +702,53 @@ export const CartPage = () => {
                         </button>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Coupon Application Box */}
+                  <div className="border-t border-gray-100 pt-4 pb-4">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-2">
+                      Mã giảm giá (Coupon)
+                    </label>
+                    {appliedPromo ? (
+                      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl p-3">
+                        <div>
+                          <span className="font-mono text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded">
+                            {appliedPromo}
+                          </span>
+                          {dbCoupon && selectedTotal < dbCoupon.minimumOrderAmount && (
+                            <p className="text-[10px] text-red-500 mt-1.5 font-medium">
+                              Chưa đạt tối thiểu {formatVND(dbCoupon.minimumOrderAmount)}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemovePromo}
+                          className="text-xs font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-wider cursor-pointer"
+                        >
+                          Gỡ mã
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nhập mã giảm giá..."
+                          value={promoInput}
+                          onChange={(e) => setPromoInput(e.target.value)}
+                          className="flex-1 input-base py-2 text-xs uppercase"
+                          disabled={promoLoading || isSubmitting}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyPromo}
+                          disabled={promoLoading || isSubmitting || selectedItemIds.length === 0}
+                          className="bg-brand-charcoal text-white hover:bg-brand-dark px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                        >
+                          {promoLoading ? '...' : 'Áp dụng'}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Calculations */}
