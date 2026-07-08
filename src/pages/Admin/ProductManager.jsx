@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { formatVND } from '../../utils/price.js'
 import toast from 'react-hot-toast'
 import productApi from '../../api/productApi'
@@ -796,7 +797,7 @@ export const ProductManager = () => {
       </div>
 
       {/* ─── MODAL: PRODUCT CREATE / UPDATE ─── */}
-      {isProductModalOpen && (
+      {isProductModalOpen && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto my-auto">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
@@ -936,11 +937,12 @@ export const ProductManager = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ─── MODAL: VARIANT CREATE / UPDATE ─── */}
-      {isVariantModalOpen && (
+      {isVariantModalOpen && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 space-y-4 my-auto">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
@@ -1059,7 +1061,8 @@ export const ProductManager = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Confirmation Modal */}

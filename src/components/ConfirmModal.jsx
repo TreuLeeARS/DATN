@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 export const ConfirmModal = ({ 
   isOpen, 
@@ -24,7 +25,7 @@ export const ConfirmModal = ({
 
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-charcoal/60 backdrop-blur-sm"
       onClick={onCancel}
@@ -74,6 +75,7 @@ export const ConfirmModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

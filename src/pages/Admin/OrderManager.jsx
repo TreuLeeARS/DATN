@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { formatVND } from '../../utils/price.js'
 import toast from 'react-hot-toast'
 import orderApi from '../../api/orderApi'
@@ -354,7 +355,7 @@ export const OrderManager = () => {
       </div>
 
       {/* ─── MODAL: ORDER DETAILS & ACTION BUTTONS ─── */}
-      {isModalOpen && selectedOrder && (
+      {isModalOpen && selectedOrder && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-charcoal/60 backdrop-blur-sm">
           <div className="w-full max-w-2xl bg-white border border-black/10 shadow-2xl p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto rounded-none">
             
@@ -522,7 +523,8 @@ export const OrderManager = () => {
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <ConfirmModal
