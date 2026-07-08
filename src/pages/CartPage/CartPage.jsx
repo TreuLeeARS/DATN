@@ -7,6 +7,7 @@ import { Header } from '../../components/Header/Header.jsx'
 import { Footer } from '../../components/Footer/Footer.jsx'
 import { useCartContext } from '../../context/CartContext.jsx'
 import orderApi from '../../api/orderApi.js'
+import couponApi from '../../api/couponApi.js'
 import { AddressSelector } from '../../components/AddressSelector/AddressSelector.jsx'
 
 export const CartPage = () => {
@@ -14,6 +15,32 @@ export const CartPage = () => {
   const { cartItems, removeItem, updateQuantity, clearCart, total } = useCartContext()
 
   const [selectedItemIds, setSelectedItemIds] = useState([])
+  const [dbCoupon, setDbCoupon] = useState(null)
+
+  // Tải thông tin coupon thực tế từ cơ sở dữ liệu nếu có mã giảm giá được áp dụng
+  useEffect(() => {
+    const appliedPromo = sessionStorage.getItem('appliedPromoCode')
+    if (appliedPromo) {
+      const fetchCoupon = async () => {
+        try {
+          const res = await couponApi.getCoupons({ page: 0, size: 100 })
+          if (res && res.data && res.data.content) {
+            const found = res.data.content.find(
+              c => c.couponCode.toLowerCase().trim() === appliedPromo.toLowerCase().trim()
+            )
+            if (found) {
+              setDbCoupon(found)
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching coupon info from DB:', err)
+        }
+      }
+      fetchCoupon()
+    } else {
+      setDbCoupon(null)
+    }
+  }, [cartItems])
 
   // Kiểm tra đăng nhập, nếu chưa đăng nhập thì đẩy về trang đăng nhập
   useEffect(() => {
@@ -144,9 +171,20 @@ export const CartPage = () => {
   const selectedItems = cartItems.filter(item => selectedItemIds.includes(item.id))
   const selectedTotal = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
-  // CRIT-05 FIX: Đọc mã giảm giá — chỉ hiển thị ước tính, server sẽ validate thực tế
+  // Đọc mã giảm giá và tính toán số tiền giảm thực tế từ DB
   const appliedPromo = sessionStorage.getItem('appliedPromoCode')
-  const estimatedDiscount = appliedPromo ? Math.round(selectedTotal * 0.15) : 0
+  const estimatedDiscount = (() => {
+    if (!appliedPromo) return 0
+    if (dbCoupon) {
+      if (selectedTotal >= dbCoupon.minimumOrderAmount) {
+        return Number(dbCoupon.discountValue)
+      } else {
+        return 0 // Chưa đạt giá trị đơn hàng tối thiểu
+      }
+    }
+    // Fallback tính ước tính 15% tạm thời khi đang tải dữ liệu coupon
+    return Math.round(selectedTotal * 0.15)
+  })()
 
   // CRIT-06 FIX: Phí vận chuyển ước tính — server sẽ quyết định giá trị cuối cùng
   const estimatedShippingFee = selectedTotal >= 1000000 ? 0 : 30000
