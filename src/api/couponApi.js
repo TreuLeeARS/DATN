@@ -25,9 +25,7 @@ const couponApi = {
 
   // Phục hồi coupon đã xóa mềm (Admin)
   restoreCoupon: (id) => {
-    return axiosClient.put('/coupons/restore', null, {
-      params: { id }
-    });
+    return axiosClient.put(`/coupons/restore/${id}`);
   }
 };
 

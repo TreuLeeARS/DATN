@@ -7,10 +7,9 @@ import paymentApi from '../../api/paymentApi'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 
 export const OrderManager = () => {
-  const [orders, setOrders] = useState([])
+  const [allOrders, setAllOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
   const [statusFilter, setStatusFilter] = useState('ALL') // 'ALL' | 'CREATED' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELED'
   
   // Custom Confirmation Modal state
@@ -39,36 +38,37 @@ export const OrderManager = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [loadingPayment, setLoadingPayment] = useState(false)
+  
+  const filteredOrders = allOrders.filter(o => {
+    if (statusFilter === 'ALL') return true
+    if (statusFilter === 'CREATED') {
+      return o.status === 'CREATED' || o.status === 'PENDING'
+    }
+    if (statusFilter === 'CANCELED') {
+      return o.status === 'CANCELED' || o.status === 'CANCELLED'
+    }
+    return o.status === statusFilter
+  })
+
+  const pageSize = 15
+  const totalPages = Math.ceil(filteredOrders.length / pageSize) || 1
+  const activePage = Math.min(page, totalPages - 1)
+  const displayedOrders = filteredOrders.slice(activePage * pageSize, (activePage + 1) * pageSize)
  
   useEffect(() => {
     fetchOrders()
-  }, [page, statusFilter])
- 
+  }, [])
+  
   const fetchOrders = async () => {
     try {
       setLoading(true)
-      // Call all orders, then filter client-side if statusFilter !== 'ALL', or fetch with pagination
       const res = await orderApi.getAllOrders({
-        page: page,
-        size: 15,
+        page: 0,
+        size: 1000,
         sort: 'orderId,desc'
       })
       if (res && res.data) {
-        let content = res.data.content || []
-        
-        // Backend handles general fetch. We can filter on client side for quick and responsive status tabs
-        if (statusFilter !== 'ALL') {
-          if (statusFilter === 'CREATED') {
-            content = content.filter(o => o.status === 'CREATED' || o.status === 'PENDING')
-          } else if (statusFilter === 'CANCELED') {
-            content = content.filter(o => o.status === 'CANCELED' || o.status === 'CANCELLED')
-          } else {
-            content = content.filter(o => o.status === statusFilter)
-          }
-        }
-        
-        setOrders(content)
-        setTotalPages(res.data.totalPages || 1)
+        setAllOrders(res.data.content || [])
       }
     } catch (err) {
       console.error('Error fetching orders:', err)
@@ -294,14 +294,14 @@ export const OrderManager = () => {
                     </div>
                   </td>
                 </tr>
-              ) : orders.length === 0 ? (
+              ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="py-12 text-center text-brand-muted font-medium">
                     Không tìm thấy đơn đặt hàng nào phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
               ) : (
-                orders.map((o) => {
+                displayedOrders.map((o) => {
                   const shipInfo = parseShippingAddress(o.shippingAddress)
                   const orderDate = o.createdAt ? new Date(o.createdAt).toLocaleDateString('vi-VN') : 'N/A'
                   return (
@@ -332,7 +332,7 @@ export const OrderManager = () => {
                       </td>
                       <td className="py-4 px-4 text-center space-x-2">
                         <button
-                          onClick={() => handleOpenDetailModal(o)}
+                           onClick={() => handleOpenDetailModal(o)}
                           className="text-[10px] uppercase tracking-wider font-semibold text-brand-charcoal hover:underline"
                         >
                           Chi tiết / Duyệt
@@ -350,17 +350,17 @@ export const OrderManager = () => {
         {totalPages > 1 && (
           <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100 bg-gray-50/50 text-xs">
             <button
-              disabled={page === 0}
+              disabled={activePage === 0}
               onClick={() => setPage(prev => Math.max(0, prev - 1))}
               className="px-3 py-1.5 border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors"
             >
               Trước
             </button>
             <span className="font-semibold text-brand-muted">
-              Trang {page + 1} / {totalPages}
+              Trang {activePage + 1} / {totalPages}
             </span>
             <button
-              disabled={page >= totalPages - 1}
+              disabled={activePage >= totalPages - 1}
               onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
               className="px-3 py-1.5 border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors"
             >

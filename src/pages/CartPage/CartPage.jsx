@@ -8,11 +8,12 @@ import { Footer } from '../../components/Footer/Footer.jsx'
 import { useCartContext } from '../../context/CartContext.jsx'
 import orderApi from '../../api/orderApi.js'
 import couponApi from '../../api/couponApi.js'
+import paymentApi from '../../api/paymentApi.js'
 import { AddressSelector } from '../../components/AddressSelector/AddressSelector.jsx'
 
 export const CartPage = () => {
   const navigate = useNavigate()
-  const { cartItems, removeItem, updateQuantity, clearCart, total } = useCartContext()
+  const { cartItems, removeItem, updateQuantity, clearCart, refreshCart, total } = useCartContext()
 
   const [selectedItemIds, setSelectedItemIds] = useState([])
   const [dbCoupon, setDbCoupon] = useState(null)
@@ -252,42 +253,7 @@ export const CartPage = () => {
     setIsSubmitting(true)
 
     try {
-      // Đảm bảo dữ liệu giỏ hàng trên Backend DB luôn được bổ sung & làm tươi trước khi tạo đơn hàng
-      try {
-        if (selectedItems.length > 0) {
-          for (const item of selectedItems) {
-            let vId = item.productVariantId
-            if (!vId && item.name) {
-              try {
-                const searchRes = await productApi.searchProducts({ name: item.name })
-                const matchedProduct = searchRes.data?.content?.[0]
-                if (matchedProduct) {
-                  const detailRes = await productApi.getProductDetail(matchedProduct.productId)
-                  const variants = detailRes.data?.variants || []
-                  const found = variants.find(
-                    v => v.size.toUpperCase() === (item.selectedSize || 'S').toUpperCase() &&
-                         (item.selectedColor ? v.color.toLowerCase() === item.selectedColor.toLowerCase() : true)
-                  ) || variants.find(v => v.quantityInStock > 0) || variants[0]
-                  if (found) vId = found.productVariantId
-                }
-              } catch (e) {
-                console.warn('Variant lookup error:', e)
-              }
-            }
-            if (!vId) vId = item.id
-
-            if (vId) {
-              try {
-                await cartApi.addItem({ productVariantId: Number(vId), quantity: item.quantity || 1 })
-              } catch (addErr) {
-                console.warn('Cart item sync warning:', addErr)
-              }
-            }
-          }
-        }
-      } catch (syncErr) {
-        console.warn('Cảnh báo đồng bộ giỏ hàng trước thanh toán:', syncErr)
-      }
+      // Giỏ hàng đã được đồng bộ qua useCart hook, tiến hành checkout trực tiếp
 
       // CRIT-02 FIX: Gửi danh sách cartItemIds đã chọn thay vì checkout toàn bộ giỏ
       const checkoutData = {
@@ -345,9 +311,9 @@ export const CartPage = () => {
       console.error('Lỗi khi thanh toán đơn hàng:', err)
       const errorMsg = err.response?.data?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại.'
       toast.error(errorMsg)
-      // Tự động đồng bộ giỏ hàng từ backend nếu có sản phẩm hết hạn giữ hàng
+      // Tự động đồng bộ lại giỏ hàng từ backend nếu có sản phẩm hết hạn giữ hàng
       try {
-        await fetchCart()
+        await refreshCart()
       } catch (e) {
         console.error('Lỗi khi làm mới giỏ hàng:', e)
       }

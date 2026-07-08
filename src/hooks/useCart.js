@@ -96,11 +96,12 @@ export const useCart = () => {
             const detailRes = await productApi.getProductDetail(matchedProduct.productId)
             const variants = detailRes.data?.variants || []
             
-            // Tìm variant khớp với size và color được chọn
+            // Tìm variant khớp với size và color được chọn, hoặc fallback sang biến thể còn hàng
             const foundVariant = variants.find(
               v => v.size.toUpperCase() === (product.selectedSize || 'S').toUpperCase() &&
-                   v.color.toLowerCase() === (product.selectedColor || 'Beige').toLowerCase()
-            )
+                   (product.selectedColor ? v.color.toLowerCase() === product.selectedColor.toLowerCase() : true)
+            ) || variants.find(v => v.quantityInStock > 0) || variants[0]
+
             if (foundVariant) {
               variantId = foundVariant.productVariantId
             }
@@ -248,6 +249,7 @@ export const useCart = () => {
     removeItem,
     updateQuantity,
     clearCart,
+    refreshCart: fetchBackendCart,
     count,
     total,
     loading

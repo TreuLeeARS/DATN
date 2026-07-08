@@ -35,7 +35,8 @@ export const PopupManager = () => {
   const [formData, setFormData] = useState({
     header: '',
     title: '',
-    description: ''
+    description: '',
+    promotionCode: ''
   })
 
   // Fetch Popups
@@ -71,7 +72,8 @@ export const PopupManager = () => {
     setFormData({
       header: '',
       title: '',
-      description: ''
+      description: '',
+      promotionCode: ''
     })
     setIsModalOpen(true)
   }
@@ -82,7 +84,8 @@ export const PopupManager = () => {
     setFormData({
       header: popup.header || '',
       title: popup.title || '',
-      description: popup.description || ''
+      description: popup.description || '',
+      promotionCode: popup.promotionCode || ''
     })
     setIsModalOpen(true)
   }
@@ -90,7 +93,7 @@ export const PopupManager = () => {
   // Submit Handler (Create or Update)
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!formData.header.trim() || !formData.title.trim() || !formData.description.trim()) {
+    if (!formData.header.trim() || !formData.title.trim() || !formData.description.trim() || !formData.promotionCode.trim()) {
       toast.error('Vui lòng điền đầy đủ tất cả thông tin.')
       return
     }
@@ -98,7 +101,8 @@ export const PopupManager = () => {
     const payload = {
       header: formData.header.trim(),
       title: formData.title.trim(),
-      description: formData.description.trim()
+      description: formData.description.trim(),
+      promotionCode: formData.promotionCode.trim().toUpperCase()
     }
 
     try {
@@ -213,6 +217,11 @@ export const PopupManager = () => {
                   <p className="text-[10px] text-brand-muted mt-1 line-clamp-2 leading-relaxed">
                     {popup.description}
                   </p>
+                  {popup.promotionCode && (
+                    <div className="mt-2 text-[8px] bg-brand-cream border border-brand-charcoal/10 font-mono font-bold px-2 py-0.5 inline-block text-brand-charcoal uppercase rounded">
+                      Code: {popup.promotionCode}
+                    </div>
+                  )}
                 </div>
                 <div className="absolute top-2 right-2 text-[8px] bg-brand-charcoal/5 px-2 py-0.5 rounded font-mono text-brand-muted">
                   ID: {popup.id}
@@ -234,6 +243,12 @@ export const PopupManager = () => {
                     <span className="text-[10px] font-semibold text-brand-muted uppercase block">Nội dung chi tiết</span>
                     <p className="text-xs text-brand-muted mt-0.5 line-clamp-3 leading-relaxed">{popup.description}</p>
                   </div>
+                  {popup.promotionCode && (
+                    <div>
+                      <span className="text-[10px] font-semibold text-brand-muted uppercase block">Mã giảm giá đi kèm</span>
+                      <p className="text-xs text-brand-charcoal font-mono font-bold mt-0.5 text-blue-600 bg-blue-50/50 px-2 py-1 inline-block border border-blue-100 rounded">{popup.promotionCode}</p>
+                    </div>
+                  )}
 
                   <div className="text-[9.5px] text-gray-500 font-normal space-y-0.5 select-none pt-2 border-t border-gray-100">
                     <p>Tạo: {popup.createdBy || 'Hệ thống'} ({popup.createdAt ? new Date(popup.createdAt).toLocaleString('vi-VN') : 'Mặc định hệ thống'})</p>
@@ -340,8 +355,25 @@ export const PopupManager = () => {
                   onChange={handleInputChange}
                   placeholder="Ví dụ: Nhập mã OUTTA15 ở bước thanh toán để được giảm 15% cho toàn bộ sản phẩm áo sơ mi."
                   maxLength={500}
-                  rows={4}
+                  rows={3}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-brand-charcoal resize-none"
+                  required
+                />
+              </div>
+
+              {/* Promotion Code */}
+              <div className="space-y-1.5">
+                <label className="block font-semibold uppercase text-brand-muted text-[10px]">
+                  Mã giảm giá áp dụng (Promotion Code) *
+                </label>
+                <input
+                  type="text"
+                  name="promotionCode"
+                  value={formData.promotionCode}
+                  onChange={handleInputChange}
+                  placeholder="Ví dụ: PEESTART15, COLDWINTER"
+                  maxLength={50}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:border-brand-charcoal uppercase"
                   required
                 />
               </div>

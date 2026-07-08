@@ -24,7 +24,6 @@ export const ShopPromptModal = () => {
   useEffect(() => {
     const fetchActiveData = async () => {
       try {
-        // 1. Tải thông báo popup
         const popupRes = await popupApi.getPopups()
         if (popupRes && popupRes.data && popupRes.data.length > 0) {
           const activePopup = popupRes.data[0]
@@ -33,6 +32,10 @@ export const ShopPromptModal = () => {
             title: activePopup.title || 'Tặng bạn món quà nhỏ làm quen!',
             description: activePopup.description || 'Tặng ngay mã giảm giá cho đơn hàng đầu tiên của bạn tại OUTTA. Nhận ưu đãi để nâng tầm tủ đồ mùa này nhé.'
           })
+          if (activePopup.promotionCode) {
+            setPromoCode(activePopup.promotionCode)
+            return
+          }
         }
       } catch (err) {
         console.warn('Error fetching popup data:', err)
