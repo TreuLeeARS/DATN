@@ -105,14 +105,20 @@ export const ProductManager = () => {
     fetchCategories()
   }, [])
 
-  // Fetch products with debounce to prevent excessive API calls
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchProducts()
-    }, 300)
+    fetchProducts()
+  }, [page, pageSize, selectedCategoryFilter])
 
-    return () => clearTimeout(delayDebounceFn)
-  }, [page, pageSize, selectedCategoryFilter, searchQuery])
+  // Fetch when search query is cleared
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      if (page === 0) {
+        fetchProducts()
+      } else {
+        setPage(0)
+      }
+    }
+  }, [searchQuery])
 
   const fetchCategories = async () => {
     try {
@@ -129,15 +135,16 @@ export const ProductManager = () => {
     try {
       setLoading(true)
       let res
-      if (searchQuery.trim() !== '' || selectedCategoryFilter !== '') {
+      if (searchQuery.trim() !== '') {
         res = await productApi.searchProducts({
-          name: searchQuery.trim() || undefined,
+          name: searchQuery.trim(),
           categoryId: selectedCategoryFilter || undefined,
           page: page,
           size: pageSize
         })
       } else {
         res = await productApi.getAllProductsForAdmin({
+          categoryId: selectedCategoryFilter || undefined,
           page: page,
           size: pageSize,
           sort: 'productId,desc'
@@ -430,10 +437,7 @@ export const ProductManager = () => {
               type="text"
               placeholder="Tìm tên sản phẩm..."
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setPage(0)
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-charcoal focus:ring-2 focus:ring-brand-charcoal/10 text-xs font-sans placeholder-gray-400 bg-white"
             />
             <span className="absolute left-3 top-2.5 text-xs text-gray-400">🔍</span>
