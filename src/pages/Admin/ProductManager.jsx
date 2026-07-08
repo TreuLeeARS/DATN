@@ -105,20 +105,19 @@ export const ProductManager = () => {
     fetchCategories()
   }, [])
 
+  // Fetch products with debounce to prevent excessive API calls
   useEffect(() => {
-    fetchProducts()
-  }, [page, pageSize, selectedCategoryFilter])
+    const delayDebounceFn = setTimeout(() => {
+      fetchProducts()
+    }, 300)
 
-  // Fetch when search query is cleared
+    return () => clearTimeout(delayDebounceFn)
+  }, [page, pageSize, selectedCategoryFilter, searchQuery])
+
+  // Reset page to 0 when query or category changes
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      if (page === 0) {
-        fetchProducts()
-      } else {
-        setPage(0)
-      }
-    }
-  }, [searchQuery])
+    setPage(0)
+  }, [selectedCategoryFilter, searchQuery])
 
   const fetchCategories = async () => {
     try {
@@ -135,21 +134,49 @@ export const ProductManager = () => {
     try {
       setLoading(true)
       let res
-      if (searchQuery.trim() !== '') {
+
+      if (selectedCategoryFilter !== '') {
+        // If both category and name filters are active, fetch category products and filter client-side
+        if (searchQuery.trim() !== '') {
+          res = await productApi.getProductsByCategory(Number(selectedCategoryFilter), {
+            page: 0,
+            size: 1000
+          })
+          if (res && res.data) {
+            const filteredContent = (res.data.content || []).filter(p => 
+              p.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+            )
+            const startIndex = page * pageSize
+            const paginatedContent = filteredContent.slice(startIndex, startIndex + pageSize)
+            
+            setProducts(paginatedContent)
+            setTotalPages(Math.ceil(filteredContent.length / pageSize) || 1)
+            setTotalElements(filteredContent.length)
+            return
+          }
+        } else {
+          // If only category is chosen, use getProductsByCategory API
+          res = await productApi.getProductsByCategory(Number(selectedCategoryFilter), {
+            page: page,
+            size: pageSize
+          })
+        }
+      } else if (searchQuery.trim() !== '') {
+        // If only search query is present, use searchProducts API
         res = await productApi.searchProducts({
           name: searchQuery.trim(),
-          categoryId: selectedCategoryFilter || undefined,
           page: page,
           size: pageSize
         })
       } else {
+        // Default: get all products for admin
         res = await productApi.getAllProductsForAdmin({
-          categoryId: selectedCategoryFilter || undefined,
           page: page,
           size: pageSize,
           sort: 'productId,desc'
         })
       }
+
       if (res && res.data) {
         setProducts(res.data.content || [])
         setTotalPages(res.data.totalPages || 1)
