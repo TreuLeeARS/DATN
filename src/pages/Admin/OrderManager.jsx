@@ -11,7 +11,7 @@ export const OrderManager = () => {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
-  const [statusFilter, setStatusFilter] = useState('ALL') // 'ALL' | 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED'
+  const [statusFilter, setStatusFilter] = useState('ALL') // 'ALL' | 'CREATED' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELED'
   
   // Custom Confirmation Modal state
   const [confirmModal, setConfirmModal] = useState({
@@ -39,11 +39,11 @@ export const OrderManager = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [loadingPayment, setLoadingPayment] = useState(false)
-
+ 
   useEffect(() => {
     fetchOrders()
   }, [page, statusFilter])
-
+ 
   const fetchOrders = async () => {
     try {
       setLoading(true)
@@ -58,7 +58,13 @@ export const OrderManager = () => {
         
         // Backend handles general fetch. We can filter on client side for quick and responsive status tabs
         if (statusFilter !== 'ALL') {
-          content = content.filter(o => o.status === statusFilter)
+          if (statusFilter === 'CREATED') {
+            content = content.filter(o => o.status === 'CREATED' || o.status === 'PENDING')
+          } else if (statusFilter === 'CANCELED') {
+            content = content.filter(o => o.status === 'CANCELED' || o.status === 'CANCELLED')
+          } else {
+            content = content.filter(o => o.status === statusFilter)
+          }
         }
         
         setOrders(content)
@@ -196,6 +202,7 @@ export const OrderManager = () => {
   // Helper colors for status badges
   const getStatusBadgeClass = (status) => {
     switch (status) {
+      case 'CREATED':
       case 'PENDING':
         return 'bg-amber-50 text-amber-700 border-amber-200'
       case 'CONFIRMED':
@@ -204,6 +211,7 @@ export const OrderManager = () => {
         return 'bg-indigo-50 text-indigo-700 border-indigo-200'
       case 'DELIVERED':
         return 'bg-green-50 text-green-700 border-green-200'
+      case 'CANCELED':
       case 'CANCELLED':
         return 'bg-red-50 text-red-700 border-red-200'
       default:
@@ -213,12 +221,20 @@ export const OrderManager = () => {
 
   const getStatusTranslation = (status) => {
     switch (status) {
-      case 'PENDING': return 'Chờ xử lý'
-      case 'CONFIRMED': return 'Đã xác nhận'
-      case 'SHIPPING': return 'Đang giao hàng'
-      case 'DELIVERED': return 'Đã nhận hàng'
-      case 'CANCELLED': return 'Đã hủy đơn'
-      default: return status
+      case 'CREATED':
+      case 'PENDING': 
+        return 'Chờ xử lý'
+      case 'CONFIRMED': 
+        return 'Đã xác nhận'
+      case 'SHIPPING': 
+        return 'Đang giao hàng'
+      case 'DELIVERED': 
+        return 'Đã nhận hàng'
+      case 'CANCELED':
+      case 'CANCELLED': 
+        return 'Đã hủy đơn'
+      default: 
+        return status
     }
   }
 
@@ -234,7 +250,7 @@ export const OrderManager = () => {
 
         {/* Status Tabs/Filters */}
         <div className="flex flex-wrap gap-1.5 bg-brand-cream/50 p-1 border border-gray-200">
-          {['ALL', 'PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELLED'].map((tab) => (
+          {['ALL', 'CREATED', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELED'].map((tab) => (
             <button
               key={tab}
               onClick={() => { setStatusFilter(tab); setPage(0) }}
@@ -481,7 +497,7 @@ export const OrderManager = () => {
 
               <div className="flex gap-2">
                 {/* 1. Confirm / Prepare shipment */}
-                {selectedOrder.status === 'PENDING' && (
+                {(selectedOrder.status === 'CREATED' || selectedOrder.status === 'PENDING') && (
                   <button
                     onClick={() => handleUpdateStatus(selectedOrder.orderId, 'CONFIRMED')}
                     className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold tracking-wider uppercase px-4 py-2.5 rounded-none cursor-pointer"
@@ -491,7 +507,7 @@ export const OrderManager = () => {
                 )}
                 
                 {/* 2. Dispatch / Start shipping */}
-                {(selectedOrder.status === 'PENDING' || selectedOrder.status === 'CONFIRMED') && (
+                {(selectedOrder.status === 'CREATED' || selectedOrder.status === 'PENDING' || selectedOrder.status === 'CONFIRMED') && (
                   <button
                     onClick={() => handleShipOrder(selectedOrder.orderId)}
                     className="bg-brand-charcoal hover:bg-brand-dark text-white text-[10px] font-bold tracking-wider uppercase px-4 py-2.5 rounded-none cursor-pointer"
@@ -511,7 +527,7 @@ export const OrderManager = () => {
                 )}
 
                 {/* 4. Cancel Order */}
-                {selectedOrder.status !== 'DELIVERED' && selectedOrder.status !== 'CANCELLED' && (
+                {selectedOrder.status !== 'DELIVERED' && selectedOrder.status !== 'CANCELLED' && selectedOrder.status !== 'CANCELED' && (
                   <button
                     onClick={() => handleCancelOrder(selectedOrder.orderId)}
                     className="border border-red-600 text-red-600 hover:bg-red-50 text-[10px] font-bold tracking-wider uppercase px-4 py-2.5 rounded-none cursor-pointer"
