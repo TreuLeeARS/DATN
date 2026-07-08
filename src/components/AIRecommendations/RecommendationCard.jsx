@@ -13,7 +13,14 @@ export const RecommendationCard = ({ product, reason, onAddToCart, onBuyNow }) =
   const [selectedColor, setSelectedColor] = useState(null)
   const [selectedSize, setSelectedSize] = useState(null)
   const [showWarning, setShowWarning] = useState(false)
+  const [brokenImages, setBrokenImages] = useState({})
   const timelineRef = useRef(null)
+
+  useLayoutEffect(() => {
+    if (isModalOpen) {
+      setBrokenImages({})
+    }
+  }, [isModalOpen])
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -154,8 +161,12 @@ export const RecommendationCard = ({ product, reason, onAddToCart, onBuyNow }) =
             <div className="w-full md:w-1/2 p-6 flex flex-col justify-center bg-brand-cream/20">
               <div className="w-full aspect-square md:aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 relative">
                 <img
-                  src={product.images[activeImageIndex]}
-                  alt={`${product.name} - Chi tiết ${activeImageIndex + 1}`}
+                  src={
+                    (product.images[activeImageIndex] && !brokenImages[activeImageIndex])
+                      ? product.images[activeImageIndex]
+                      : (product.images.find((img, idx) => img && img.trim() !== '' && !brokenImages[idx]) || 'https://placehold.co/600x600/faf8f6/a3a3c2?text=No+Image')
+                  }
+                  alt={`${product.name} - Chi tiết`}
                   className="w-full h-full object-cover transition-all duration-300"
                 />
                 {product.badge && (
@@ -166,21 +177,31 @@ export const RecommendationCard = ({ product, reason, onAddToCart, onBuyNow }) =
               </div>
 
               {/* Thumbnail Gallery */}
-              {product.images.length > 1 && (
-                <div className="flex gap-2.5 mt-4 overflow-x-auto py-1">
-                  {product.images.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveImageIndex(idx)}
-                      className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                        activeImageIndex === idx 
-                          ? 'border-brand-charcoal scale-105 shadow-sm' 
-                          : 'border-gray-200 hover:border-brand-charcoal/50'
-                      }`}
-                    >
-                      <img src={img} alt="" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
+              {product.images.filter((img, idx) => img && img.trim() !== '' && !brokenImages[idx]).length > 1 && (
+                <div className="flex flex-wrap gap-2 mt-4 py-1 justify-start">
+                  {product.images.map((img, idx) => {
+                    if (!img || img.trim() === '' || brokenImages[idx]) return null;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveImageIndex(idx)}
+                        className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                          activeImageIndex === idx 
+                            ? 'border-brand-charcoal scale-105 shadow-sm' 
+                            : 'border-gray-200 hover:border-brand-charcoal/50'
+                        }`}
+                      >
+                        <img 
+                          src={img} 
+                          alt="" 
+                          className="w-full h-full object-cover" 
+                          onError={() => {
+                            setBrokenImages(prev => ({ ...prev, [idx]: true }))
+                          }}
+                        />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
