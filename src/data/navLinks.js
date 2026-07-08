@@ -1,6 +1,5 @@
 export const navLinks = [
   { label: 'Trang chủ', href: '/' },
-  { label: 'Mới về', href: '/shop?filter=new' },
   {
     label: 'Quần áo',
     href: '/shop',
