@@ -2,12 +2,17 @@ import { useState, Suspense } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import authApi from '../api/authApi'
 import { cn } from '../utils/cn'
+import { isAdmin, isStaff } from '../utils/auth'
 
 export const AdminLayout = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const username = localStorage.getItem('username') || 'Admin'
+
+  const userIsAdmin = isAdmin()
+  const userIsStaff = isStaff()
+  const roleName = userIsAdmin ? 'Quản trị viên' : userIsStaff ? 'Nhân viên' : 'Quản trị viên'
 
   const menuItems = [
     {
@@ -47,6 +52,15 @@ export const AdminLayout = () => {
       )
     },
     {
+      label: 'Quản lý hóa đơn',
+      href: '/admin/invoices',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      )
+    },
+    {
       label: 'Quản lý người dùng',
       href: '/admin/users',
       icon: (
@@ -72,8 +86,25 @@ export const AdminLayout = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.02 6.02 0 00-4.902-5.903m0 0V4a2 2 0 00-4 0v.597C7.49 5.217 6.107 7.107 6.107 9.382V14c0 .417-.16.82-.442 1.105L4.242 16.5h15" />
         </svg>
       )
+    },
+    {
+      label: 'Nhật ký hoạt động',
+      href: '/admin/action-logs',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )
     }
   ]
+
+  // Filter menu items dynamically
+  const displayedMenuItems = menuItems.filter(item => {
+    if (item.href === '/admin/action-logs') {
+      return userIsAdmin // Only ADMIN role can see Action Logs page
+    }
+    return true
+  })
 
   const handleLogout = async () => {
     try {
@@ -97,11 +128,14 @@ export const AdminLayout = () => {
     if (location.pathname === '/admin/categories') return 'Quản lý danh mục sản phẩm'
     if (location.pathname === '/admin/products') return 'Quản lý danh mục sản phẩm và biến thể'
     if (location.pathname === '/admin/orders') return 'Quản lý đơn đặt hàng toàn hệ thống'
+    if (location.pathname === '/admin/invoices') return 'Quản lý hóa đơn bán hàng'
     if (location.pathname === '/admin/users') return 'Quản lý tài khoản người dùng'
     if (location.pathname === '/admin/coupons') return 'Quản lý mã giảm giá (Coupons)'
     if (location.pathname === '/admin/popups') return 'Quản lý thông báo gợi ý Coupon'
+    if (location.pathname === '/admin/action-logs') return 'Nhật ký hoạt động hệ thống'
     return 'Admin Panel'
   }
+
 
   return (
     <div className="min-h-screen bg-brand-cream/40 flex text-brand-charcoal">
@@ -116,7 +150,7 @@ export const AdminLayout = () => {
 
         {/* Menu Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          {menuItems.map((item, idx) => {
+          {displayedMenuItems.map((item, idx) => {
             const isActive = location.pathname === item.href
             return (
               <Link
@@ -146,7 +180,7 @@ export const AdminLayout = () => {
             </div>
             <div className="truncate">
               <p className="text-sm font-semibold text-white">{username}</p>
-              <p className="text-xs text-white/40">Quản trị viên</p>
+              <p className="text-xs text-white/40">{roleName}</p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -195,7 +229,7 @@ export const AdminLayout = () => {
 
             {/* Navigation links */}
             <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-              {menuItems.map((item, idx) => {
+              {displayedMenuItems.map((item, idx) => {
                 const isActive = location.pathname === item.href
                 return (
                   <Link
@@ -231,7 +265,7 @@ export const AdminLayout = () => {
                 </div>
                 <div className="truncate">
                   <p className="text-sm font-semibold text-white">{username}</p>
-                  <p className="text-xs text-white/40">Quản trị viên</p>
+                  <p className="text-xs text-white/40">{roleName}</p>
                 </div>
               </div>
               <div className="flex space-x-2">

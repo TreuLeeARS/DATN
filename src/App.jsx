@@ -28,6 +28,9 @@ const OrderManager = lazy(() => import('./pages/Admin/OrderManager.jsx').then(m 
 const UserManager = lazy(() => import('./pages/Admin/UserManager.jsx').then(m => ({ default: m.UserManager })))
 const CouponManager = lazy(() => import('./pages/Admin/CouponManager.jsx').then(m => ({ default: m.CouponManager })))
 const PopupManager = lazy(() => import('./pages/Admin/PopupManager.jsx').then(m => ({ default: m.PopupManager })))
+const InvoiceManager = lazy(() => import('./pages/Admin/InvoiceManager.jsx').then(m => ({ default: m.InvoiceManager })))
+const ActionLogManager = lazy(() => import('./pages/Admin/ActionLogManager.jsx').then(m => ({ default: m.ActionLogManager })))
+
 
 // Simple loading indicator for Suspense
 const AdminLoading = () => (
@@ -146,9 +149,11 @@ function App() {
             <Route path="categories" element={<CategoryManager />} />
             <Route path="products" element={<ProductManager />} />
             <Route path="orders" element={<OrderManager />} />
+            <Route path="invoices" element={<InvoiceManager />} />
             <Route path="users" element={<UserManager />} />
             <Route path="coupons" element={<CouponManager />} />
             <Route path="popups" element={<PopupManager />} />
+            <Route path="action-logs" element={<ActionLogManager />} />
           </Route>
 
           {/* IMP-01 FIX: Catch-all route to prevent blank page for invalid paths */}

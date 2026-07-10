@@ -21,3 +21,25 @@ export const isAdmin = () => {
  * Dùng hàm này thay vì gán const để tránh stale closure.
  */
 export const getIsLoggedIn = () => !!localStorage.getItem('accessToken');
+
+export const isStaff = () => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return false;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    
+    const payload = JSON.parse(atob(parts[1]));
+    const roles = payload.roles || payload.authorities || payload.role || [];
+    
+    const checkRole = (r) => typeof r === 'string' && (r.toUpperCase().includes('STAFF') || r.toUpperCase().includes('EMPLOYEE'));
+    return Array.isArray(roles)
+      ? roles.some(checkRole)
+      : typeof roles === 'string' && checkRole(roles);
+  } catch (e) {
+    return false;
+  }
+};
+
+export const isAdminOrStaff = () => isAdmin() || isStaff();
+
