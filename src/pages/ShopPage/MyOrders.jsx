@@ -523,14 +523,17 @@ export const MyOrders = () => {
                         <div className="space-y-2">
                           <h4 className="text-[9px] uppercase font-bold text-brand-muted tracking-wider">Danh sách món hàng</h4>
                           <div className="bg-white border border-gray-150 divide-y divide-gray-100">
-                            {o.orderDetails && o.orderDetails.map((item, idx) => (
+                            {o.items && o.items.map((item, idx) => (
                               <div key={idx} className="flex justify-between items-center p-3">
                                 <div>
                                   <p className="font-semibold text-brand-charcoal">{item.productName}</p>
                                   <p className="text-[10px] text-brand-muted mt-0.5">Phân loại: {item.color} / Size {item.size}</p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-bold text-brand-charcoal">{formatVND(item.price)} x {item.quantity}</p>
+                                  <p className="font-bold text-brand-charcoal">{formatVND(item.unitPrice)} x {item.quantity}</p>
+                                  {item.lineTotal !== undefined && (
+                                    <p className="text-[10px] text-brand-muted font-bold mt-0.5">Thành tiền: {formatVND(item.lineTotal)}</p>
+                                  )}
                                 </div>
                               </div>
                             ))}

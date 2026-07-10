@@ -447,16 +447,16 @@ export const OrderManager = () => {
             <div className="space-y-3">
               <h4 className="text-[10px] uppercase font-bold tracking-wider text-brand-muted">Danh sách sản phẩm mua</h4>
               <div className="border border-gray-150 divide-y divide-gray-150 text-xs">
-                {selectedOrder.orderDetails && selectedOrder.orderDetails.length > 0 ? (
-                  selectedOrder.orderDetails.map((item, index) => (
+                {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                  selectedOrder.items.map((item, index) => (
                     <div key={index} className="flex justify-between items-center p-3 hover:bg-gray-50/50">
                       <div>
                         <p className="font-semibold text-brand-charcoal">{item.productName}</p>
                         <p className="text-[10px] text-brand-muted mt-0.5">Phân loại: {item.color} / Size {item.size}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-brand-charcoal">{formatVND(item.price)} x {item.quantity}</p>
-                        <p className="text-[10px] text-brand-muted font-bold mt-0.5">Tổng: {formatVND(item.subtotal)}</p>
+                        <p className="font-semibold text-brand-charcoal">{formatVND(item.unitPrice)} x {item.quantity}</p>
+                        <p className="text-[10px] text-brand-muted font-bold mt-0.5">Tổng: {formatVND(item.lineTotal || (item.unitPrice * item.quantity))}</p>
                       </div>
                     </div>
                   ))
