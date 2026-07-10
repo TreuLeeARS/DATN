@@ -88,7 +88,7 @@ export const MyOrders = () => {
       if (res && res.data) {
         setPaymentStatuses(prev => ({
           ...prev,
-          [orderId]: res.data.status // 'PAID' or 'UNPAID'
+          [orderId]: res.data.paymentStatus || res.data.status
         }))
       }
     } catch (e) {
@@ -508,11 +508,11 @@ export const MyOrders = () => {
                             <p className="flex items-center gap-1.5">
                               <span className="font-semibold text-brand-muted">Giao dịch:</span>
                               <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${
-                                payStatus === 'PAID' 
+                                payStatus === 'SUCCESS' || payStatus === 'PAID'
                                   ? 'bg-green-50 text-green-700 border-green-200' 
                                   : 'bg-amber-50 text-amber-700 border-amber-200'
                               }`}>
-                                {payStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                                {payStatus === 'SUCCESS' || payStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}
                               </span>
                             </p>
                             {o.note && <p><span className="font-semibold text-brand-muted">Ghi chú:</span> {o.note}</p>}
