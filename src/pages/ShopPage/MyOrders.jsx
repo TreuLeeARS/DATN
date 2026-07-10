@@ -6,7 +6,9 @@ import { Header } from '../../components/Header/Header.jsx'
 import { Footer } from '../../components/Footer/Footer.jsx'
 import orderApi from '../../api/orderApi'
 import paymentApi from '../../api/paymentApi'
+import invoiceApi from '../../api/invoiceApi.js'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
+
 
 export const MyOrders = () => {
   const navigate = useNavigate()
@@ -16,6 +18,8 @@ export const MyOrders = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [expandedOrderId, setExpandedOrderId] = useState(null)
   const [paymentStatuses, setPaymentStatuses] = useState({}) // orderId -> status text
+  const [myInvoices, setMyInvoices] = useState([])
+
 
   // Custom Confirmation Modal state
   const [confirmModal, setConfirmModal] = useState({
@@ -91,6 +95,251 @@ export const MyOrders = () => {
       console.error(`Error loading payment status for order #${orderId}:`, e)
     }
   }
+
+  // Fetch my invoices
+  const fetchMyInvoices = async () => {
+    try {
+      const token = localStorage.getItem('accessToken')
+      if (token) {
+        const res = await invoiceApi.getMyInvoices()
+        if (res && res.data) {
+          setMyInvoices(res.data || [])
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching my invoices:', e)
+    }
+  }
+
+  useEffect(() => {
+    fetchMyInvoices()
+  }, [orders])
+
+  const handlePrintInvoice = (invoice) => {
+    if (!invoice) return
+
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      toast.error('Trình duyệt đã chặn pop-up in. Vui lòng cấp quyền truy cập.')
+      return
+    }
+
+    const dateStr = invoice.invoiceDate
+      ? new Date(invoice.invoiceDate).toLocaleString('vi-VN')
+      : 'N/A'
+    const orderDateStr = invoice.order?.orderDate
+      ? new Date(invoice.order.orderDate).toLocaleString('vi-VN')
+      : 'N/A'
+
+    const customerName = invoice.order?.user
+      ? `${invoice.order.user.lastName || ''} ${invoice.order.user.firstName || ''}`.trim() || invoice.order.user.username
+      : 'Khách hàng'
+    
+    const customerPhone = invoice.order?.user?.phone || 'N/A'
+    const customerEmail = invoice.order?.user?.email || 'N/A'
+    const shippingAddress = invoice.order?.shippingAddress || 'Nhận tại cửa hàng'
+
+    const itemsHtml = (invoice.order?.items || []).map((item, idx) => {
+      const colorText = item.color ? `Màu: ${item.color}` : ''
+      const sizeText = item.size ? `Size: ${item.size}` : ''
+      const attrs = [colorText, sizeText].filter(Boolean).join(', ')
+      const subtotal = (item.quantity || 0) * (item.unitPrice || 0)
+      
+      return `
+        <tr>
+          <td style="text-align: center; border-bottom: 1px solid #eee; padding: 8px;">${idx + 1}</td>
+          <td style="border-bottom: 1px solid #eee; padding: 8px;">
+            <div style="font-weight: 600;">${item.productName || 'Sản phẩm'}</div>
+            ${attrs ? `<div style="font-size: 11px; color: #666; margin-top: 2px;">${attrs}</div>` : ''}
+          </td>
+          <td style="text-align: center; border-bottom: 1px solid #eee; padding: 8px;">${item.quantity || 0}</td>
+          <td style="text-align: right; border-bottom: 1px solid #eee; padding: 8px;">${formatVND(item.unitPrice || 0)}</td>
+          <td style="text-align: right; border-bottom: 1px solid #eee; padding: 8px; font-weight: 600;">${formatVND(subtotal)}</td>
+        </tr>
+      `
+    }).join('')
+
+    const invoiceHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Hóa đơn #${invoice.id}</title>
+          <style>
+            body {
+              font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+              color: #1a1a1a;
+              margin: 0;
+              padding: 30px;
+              font-size: 13px;
+              line-height: 1.5;
+            }
+            .invoice-box {
+              max-width: 800px;
+              margin: auto;
+              border: 1px solid #eee;
+              padding: 40px;
+              background: #fff;
+            }
+            .header-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            .header-table td {
+              padding: 0;
+              vertical-align: top;
+            }
+            .title {
+              font-size: 26px;
+              font-weight: bold;
+              text-transform: uppercase;
+              letter-spacing: 1.5px;
+              margin: 0 0 8px 0;
+              color: #111;
+            }
+            .shop-info {
+              font-size: 12px;
+              color: #666;
+            }
+            .invoice-details {
+              text-align: right;
+              font-size: 12px;
+            }
+            .section-title {
+              font-size: 11px;
+              font-weight: bold;
+              text-transform: uppercase;
+              color: #888;
+              border-bottom: 1.5px solid #222;
+              padding-bottom: 6px;
+              margin: 30px 0 15px 0;
+            }
+            .info-grid {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .info-grid td {
+              width: 50%;
+              vertical-align: top;
+              line-height: 1.6;
+            }
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 20px 0;
+            }
+            .items-table th {
+              background: #f8f9fa;
+              border-top: 1px solid #e9ecef;
+              border-bottom: 2px solid #dee2e6;
+              padding: 10px;
+              font-size: 11px;
+              font-weight: bold;
+              text-transform: uppercase;
+            }
+            .totals-table {
+              width: 300px;
+              margin-left: auto;
+              border-collapse: collapse;
+            }
+            .totals-table td {
+              padding: 6px 10px;
+            }
+            .totals-final {
+              font-size: 15px;
+              font-weight: bold;
+              border-top: 1.5px solid #222;
+              padding-top: 10px;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 50px;
+              padding-top: 20px;
+              border-top: 1px dashed #ced4da;
+              font-size: 11px;
+              color: #868e96;
+            }
+            @media print {
+              body { padding: 0; }
+              .invoice-box { border: none; padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="invoice-box">
+            <table class="header-table">
+              <tr>
+                <td>
+                  <h1 class="title">OUTTA STORE 💜</h1>
+                  <div class="shop-info">
+                    <strong>Đơn vị bán hàng:</strong> Bee Store E-Commerce<br>
+                    <strong>Địa chỉ:</strong> 123 Đường Cầu Giấy, Hà Nội
+                  </div>
+                </td>
+                <td class="invoice-details">
+                  <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">HÓA ĐƠN BÁN HÀNG</div>
+                  <strong>Mã hóa đơn:</strong> #${invoice.id}<br>
+                  <strong>Ngày xuất:</strong> ${dateStr}
+                </td>
+              </tr>
+            </table>
+
+            <div class="section-title">Thông tin giao nhận</div>
+            <table class="info-grid">
+              <tr>
+                <td>
+                  <strong>Khách hàng:</strong> ${customerName}<br>
+                  <strong>Điện thoại:</strong> ${customerPhone}
+                </td>
+                <td>
+                  <strong>Địa chỉ nhận hàng:</strong><br>
+                  ${shippingAddress.replace(/\n/g, '<br>')}
+                </td>
+              </tr>
+            </table>
+
+            <div class="section-title">Chi tiết thanh toán</div>
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">STT</th>
+                  <th>Tên mặt hàng</th>
+                  <th style="width: 80px; text-align: center;">Số lượng</th>
+                  <th style="width: 130px; text-align: right;">Đơn giá</th>
+                  <th style="width: 150px; text-align: right;">Thành tiền</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+
+            <table class="totals-table">
+              <tr class="totals-final">
+                <td style="text-align: left;">Tổng thanh toán:</td>
+                <td style="text-align: right; font-size: 15px;">${formatVND(invoice.totalAmount || 0)}</td>
+              </tr>
+            </table>
+
+            <div class="footer">
+              Cảm ơn quý khách đã mua sắm tại OUTTA STORE!<br>
+              Hóa đơn điện tử tự động tạo lập từ Bee Store.
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+    printWindow.document.write(invoiceHtml)
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 500)
+  }
+
 
   const handleCancelMyOrder = (orderId) => {
     openConfirm(
@@ -291,14 +540,29 @@ export const MyOrders = () => {
                         {/* Order footer actions */}
                         <div className="flex justify-between items-center pt-2">
                           <div>
-                            {o.status === 'PENDING' && (
-                              <button
-                                onClick={() => handleCancelMyOrder(o.orderId)}
-                                className="border border-red-500 text-red-500 text-[10px] font-semibold tracking-wider uppercase px-4 py-2 hover:bg-red-50 transition-colors rounded-none cursor-pointer"
-                              >
-                                Hủy đơn hàng
-                              </button>
-                            )}
+                            {(() => {
+                              const matchingInvoice = myInvoices.find(inv => inv.order?.orderId === o.orderId)
+                              return (
+                                <div className="flex gap-2">
+                                  {o.status === 'PENDING' && (
+                                    <button
+                                      onClick={() => handleCancelMyOrder(o.orderId)}
+                                      className="border border-red-500 text-red-500 text-[10px] font-semibold tracking-wider uppercase px-4 py-2 hover:bg-red-50 transition-colors rounded-none cursor-pointer"
+                                    >
+                                      Hủy đơn hàng
+                                    </button>
+                                  )}
+                                  {matchingInvoice && (
+                                    <button
+                                      onClick={() => handlePrintInvoice(matchingInvoice)}
+                                      className="border border-brand-charcoal text-brand-charcoal text-[10px] font-semibold tracking-wider uppercase px-4 py-2 hover:bg-brand-charcoal hover:text-white transition-all rounded-none cursor-pointer"
+                                    >
+                                      Xem hóa đơn
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })()}
                           </div>
                           <p className="text-brand-muted text-[10px] italic">
                             * Vui lòng liên hệ hotline của Outta nếu bạn muốn đổi trả hàng sau khi đã giao.
