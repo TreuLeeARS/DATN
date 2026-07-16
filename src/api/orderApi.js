@@ -9,7 +9,7 @@ const orderApi = {
 
   // Tạo đơn hàng mới từ checkout
   checkout: (checkoutData) => {
-    // checkoutData: { fullName, phone, shippingAddress, email, note, paymentMethodName, promoCode }
+    // checkoutData: { shippingAddress, province, district, ward, couponCode, paymentMethodType }
     return axiosClient.post('/orders/checkout', checkoutData);
   },
 

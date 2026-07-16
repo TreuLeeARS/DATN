@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import actionLogApi from '../../api/actionLogApi.js'
 
@@ -13,29 +13,37 @@ export const ActionLogManager = () => {
   const [usernameFilter, setUsernameFilter] = useState('')
   const [actionTypeFilter, setActionTypeFilter] = useState('ALL')
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true)
       const res = await actionLogApi.getLogs({
         page: page,
         size: 20
       })
-      if (res && res.data) {
-        setLogs(res.content || res.data.content || [])
-        setTotalPages(res.totalPages || res.data.totalPages || 1)
-        setTotalElements(res.totalElements || res.data.totalElements || 0)
+      // BE currently returns a raw Spring Page<ActionLog>. Keep the fallback
+      // for BaseResponse<Page<ActionLog>> in case this endpoint is standardized.
+      const pageData = res?.data ?? res
+      if (!pageData || !Array.isArray(pageData.content)) {
+        throw new Error('Invalid action log response')
       }
+
+      setLogs(pageData.content)
+      setTotalPages(pageData.totalPages ?? 1)
+      setTotalElements(pageData.totalElements ?? 0)
     } catch (err) {
       console.error('Error fetching action logs:', err)
+      setLogs([])
+      setTotalPages(1)
+      setTotalElements(0)
       toast.error('Không thể tải nhật ký hoạt động từ máy chủ.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [page])
 
   useEffect(() => {
     fetchLogs()
-  }, [page])
+  }, [fetchLogs])
 
   // Apply local filter on the fetched page contents for additional UX
   const filteredLogs = logs.filter(log => {

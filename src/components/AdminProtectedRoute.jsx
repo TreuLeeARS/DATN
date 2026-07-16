@@ -1,21 +1,22 @@
 import { Navigate } from 'react-router-dom'
-import { isAdmin } from '../utils/auth'
+import { isAdmin, isAdminOrStaff } from '../utils/auth'
 import toast from 'react-hot-toast'
 import { useEffect } from 'react'
 
-export const AdminProtectedRoute = ({ children }) => {
-  const isAuthAdmin = isAdmin()
+export const AdminProtectedRoute = ({ children, adminOnly = false }) => {
+  const canAccessAdminArea = isAdminOrStaff()
+  const canAccessRoute = canAccessAdminArea && (!adminOnly || isAdmin())
 
   useEffect(() => {
-    if (!isAuthAdmin) {
+    if (!canAccessRoute) {
       toast.error('Bạn không có quyền truy cập vào khu vực Quản trị!', {
         id: 'admin-unauthorized-toast',
       })
     }
-  }, [isAuthAdmin])
+  }, [canAccessRoute])
 
-  if (!isAuthAdmin) {
-    return <Navigate to="/" replace />
+  if (!canAccessRoute) {
+    return <Navigate to={canAccessAdminArea ? '/admin' : '/'} replace />
   }
 
   return children

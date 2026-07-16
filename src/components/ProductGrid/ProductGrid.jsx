@@ -76,7 +76,7 @@ export const ProductGrid = () => {
     return () => ctx.revert()
   }, [loading, productsList])
 
-  const handleAddToCart = (product) => {
+  const handleAddToCart = async (product) => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
       sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'cart' }))
@@ -84,8 +84,12 @@ export const ProductGrid = () => {
       showAuthToast('Đăng nhập để thêm sản phẩm vào giỏ hàng.')
       return
     }
-    addItem(product, 1)
-    toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
+    try {
+      await addItem(product, 1)
+      toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Không thể thêm sản phẩm vào giỏ hàng.')
+    }
   }
 
   const handleBuyNow = async (product) => {
@@ -96,12 +100,12 @@ export const ProductGrid = () => {
       showAuthToast('Đăng nhập để tiến hành mua sắm ngay.')
       return
     }
-    await addItem(product, 1)
-    sessionStorage.setItem('checkoutOnlyName', product.name)
-    sessionStorage.setItem('checkoutOnlySize', product.selectedSize || 'S')
-    sessionStorage.setItem('checkoutOnlyColor', product.selectedColor || '')
-    sessionStorage.setItem('checkoutOnlyProductId', product.id)
-    navigate('/cart')
+    try {
+      await addItem(product, 1)
+      navigate('/cart')
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Không thể mua sản phẩm này lúc này.')
+    }
   }
 
   return (

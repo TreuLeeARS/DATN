@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 
+const DEFAULT_COORDS = { lat: 10.7769, lon: 106.7009 }
+
 export const AddressMapModal = ({ isOpen, onClose, onSelectAddress }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedAddress, setSelectedAddress] = useState('')
-  const [coords, setCoords] = useState({ lat: 10.7769, lon: 106.7009 }) // Default: TP.HCM
+  const [selectedAddressDetails, setSelectedAddressDetails] = useState({})
   const mapContainerRef = useRef(null)
   const leafletMapRef = useRef(null)
   const markerRef = useRef(null)
@@ -33,7 +35,7 @@ export const AddressMapModal = ({ isOpen, onClose, onSelectAddress }) => {
       }
 
       const L = window.L
-      const map = L.map(mapContainerRef.current).setView([coords.lat, coords.lon], 15)
+      const map = L.map(mapContainerRef.current).setView([DEFAULT_COORDS.lat, DEFAULT_COORDS.lon], 15)
       leafletMapRef.current = map
 
       // OpenStreetMap Tiles
@@ -43,7 +45,7 @@ export const AddressMapModal = ({ isOpen, onClose, onSelectAddress }) => {
       }).addTo(map)
 
       // Custom Red Pin Marker
-      const marker = L.marker([coords.lat, coords.lon], { draggable: true }).addTo(map)
+      const marker = L.marker([DEFAULT_COORDS.lat, DEFAULT_COORDS.lon], { draggable: true }).addTo(map)
       markerRef.current = marker
 
       // Reverse geocode helper
@@ -51,11 +53,12 @@ export const AddressMapModal = ({ isOpen, onClose, onSelectAddress }) => {
         setLoading(true)
         try {
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=vi`
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1&accept-language=vi`
           )
           const data = await res.json()
           if (data && data.display_name) {
             setSelectedAddress(data.display_name)
+            setSelectedAddressDetails(data.address || {})
           }
         } catch (err) {
           console.error('Lỗi đọc tọa độ:', err)
@@ -68,19 +71,17 @@ export const AddressMapModal = ({ isOpen, onClose, onSelectAddress }) => {
       map.on('click', (e) => {
         const { lat, lng } = e.latlng
         marker.setLatLng([lat, lng])
-        setCoords({ lat, lon: lng })
         updateAddressFromCoords(lat, lng)
       })
 
       // Handle Marker Drag
       marker.on('dragend', () => {
         const position = marker.getLatLng()
-        setCoords({ lat: position.lat, lon: position.lng })
         updateAddressFromCoords(position.lat, position.lng)
       })
 
       // Initial address lookup
-      updateAddressFromCoords(coords.lat, coords.lon)
+      updateAddressFromCoords(DEFAULT_COORDS.lat, DEFAULT_COORDS.lon)
     }
 
     if (window.L) {
@@ -111,17 +112,17 @@ export const AddressMapModal = ({ isOpen, onClose, onSelectAddress }) => {
     setLoading(true)
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
           searchQuery + ', Việt Nam'
-        )}&accept-language=vi`
+        )}&addressdetails=1&accept-language=vi`
       )
       const data = await res.json()
       if (data && data.length > 0) {
         const place = data[0]
         const lat = parseFloat(place.lat)
         const lon = parseFloat(place.lon)
-        setCoords({ lat, lon })
         setSelectedAddress(place.display_name)
+        setSelectedAddressDetails(place.address || {})
 
         if (leafletMapRef.current && markerRef.current) {
           leafletMapRef.current.setView([lat, lon], 16)
@@ -137,7 +138,10 @@ export const AddressMapModal = ({ isOpen, onClose, onSelectAddress }) => {
 
   const handleConfirm = () => {
     const finalAddr = selectedAddress || searchQuery || 'Chưa chọn địa chỉ chi tiết'
-    onSelectAddress(finalAddr)
+    onSelectAddress({
+      displayName: finalAddr,
+      address: selectedAddressDetails
+    })
     onClose()
   }
 

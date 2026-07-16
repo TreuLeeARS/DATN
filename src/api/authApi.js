@@ -13,11 +13,6 @@ const authApi = {
     return axiosClient.post('/auth/register', userData);
   },
 
-  // Lấy thông tin người dùng hiện tại
-  getProfile: () => {
-    return axiosClient.get('/auth/profile');
-  },
-
   // Đăng xuất
   logout: () => {
     return axiosClient.post('/auth/logout');

@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import cartApi from '../api/cartApi'
 import productApi from '../api/productApi'
-import { products as localProducts } from '../data/products'
 import { getIsLoggedIn } from '../utils/auth'
+import { mapColor } from '../utils/productMapper'
 
 const CART_STORAGE_KEY = 'pee_cart_items'
 const MAX_ITEM_QUANTITY = 99
@@ -19,7 +19,15 @@ const getCartItemKey = (product) => {
 }
 
 export const useCart = () => {
-  const [cartItems, setCartItems] = useState([])
+  const [cartItems, setCartItems] = useState(() => {
+    if (getIsLoggedIn()) return []
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY)
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [loading, setLoading] = useState(false)
 
   // Lấy giỏ hàng từ Backend
@@ -33,14 +41,7 @@ export const useCart = () => {
         const dbCart = response.data
         // Ánh xạ dữ liệu từ backend DTO sang format frontend mong đợi
         const mappedItems = dbCart.items.map(item => {
-          // Tìm mã màu hex tương ứng từ file products.js tĩnh để giao diện hiển thị đúng màu sắc
-          let selectedColorHex = ''
-          const localProd = localProducts.find(p => p.name === item.productName)
-          if (localProd && localProd.colors) {
-            const matchedColor = localProd.colors.find(c => c.name.toLowerCase() === item.color.toLowerCase())
-            if (matchedColor) selectedColorHex = matchedColor.hex
-          }
-
+          // Chuẩn hóa tên màu do BE trả về sang mã màu dùng để hiển thị.
           return {
             id: item.cartItemId, // ID trong giỏ hàng (sử dụng làm id)
             productVariantId: item.productVariantId,
@@ -49,7 +50,7 @@ export const useCart = () => {
             quantity: item.quantity,
             selectedSize: item.size,
             selectedColor: item.color,
-            selectedColorHex: selectedColorHex,
+            selectedColorHex: mapColor(item.color).hex,
             images: item.images && item.images.length > 0 ? item.images : ['https://placehold.co/600x600/faf8f6/a3a3c2?text=No+Image'],
             subtotal: item.subtotal
           }
@@ -68,15 +69,6 @@ export const useCart = () => {
   useEffect(() => {
     if (getIsLoggedIn()) {
       fetchBackendCart()
-    } else {
-      // Nếu chưa đăng nhập, đọc từ localStorage như cũ
-      try {
-        const saved = localStorage.getItem(CART_STORAGE_KEY)
-        setCartItems(saved ? JSON.parse(saved) : [])
-      } catch (e) {
-        console.error('Lỗi đọc giỏ hàng từ localStorage:', e)
-        setCartItems([])
-      }
     }
   }, [fetchBackendCart])
 
@@ -90,27 +82,31 @@ export const useCart = () => {
 
         // Nếu chưa có productVariantId, thực hiện tra cứu động từ tên sản phẩm
         if (!variantId) {
+          if (!product.selectedSize || !product.selectedColor) {
+            throw new Error('Vui lòng chọn đầy đủ màu sắc và kích cỡ trước khi thêm vào giỏ hàng.')
+          }
           const searchRes = await productApi.searchProducts({ name: product.name })
-          const matchedProduct = searchRes.data?.content?.[0]
+          const matchedProduct = searchRes.data?.content?.find(
+            item => item.name?.trim().toLowerCase() === product.name?.trim().toLowerCase()
+          )
           if (matchedProduct) {
             const detailRes = await productApi.getProductDetail(matchedProduct.productId)
             const variants = detailRes.data?.variants || []
             
-            // Tìm variant khớp với size và color được chọn, hoặc fallback sang biến thể còn hàng
-            const foundVariant = variants.find(
-              v => v.size.toUpperCase() === (product.selectedSize || 'S').toUpperCase() &&
-                   (product.selectedColor ? v.color.toLowerCase() === product.selectedColor.toLowerCase() : true)
-            ) || variants.find(v => v.quantityInStock > 0) || variants[0]
+            // Chỉ chấp nhận đúng variant mà người dùng đã chọn.
+            const requestedVariant = variants.find(
+              v => v.size?.toUpperCase() === product.selectedSize.toUpperCase() &&
+                   v.color?.toLowerCase() === product.selectedColor.toLowerCase()
+            )
 
-            if (foundVariant) {
-              variantId = foundVariant.productVariantId
+            if (requestedVariant && requestedVariant.quantityInStock > 0) {
+              variantId = requestedVariant.productVariantId
             }
           }
         }
 
         if (!variantId) {
-          toast.error(`Sản phẩm "${product.name}" hiện tại không có sẵn biến thể này trong kho.`)
-          return
+          throw new Error(`Sản phẩm "${product.name}" hiện không còn biến thể đã chọn trong kho.`)
         }
 
         await cartApi.addItem({
@@ -118,9 +114,10 @@ export const useCart = () => {
           quantity: quantity
         })
         await fetchBackendCart()
+        return true
       } catch (err) {
         console.error('Lỗi khi thêm sản phẩm vào giỏ hàng backend:', err)
-        toast.error('Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.')
+        throw err
       } finally {
         setLoading(false)
       }
@@ -143,6 +140,7 @@ export const useCart = () => {
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems))
         return newItems
       })
+      return true
     }
   }, [fetchBackendCart])
 
@@ -233,6 +231,9 @@ export const useCart = () => {
               window.location.href = '/cart'
             }, 600)
           }
+        }).catch(error => {
+          console.error('Không thể khôi phục sản phẩm mua dở:', error)
+          toast.error(error.message || 'Không thể thêm sản phẩm mua dở vào giỏ hàng.')
         })
       } catch (e) {
         console.error('Lỗi khôi phục sản phẩm mua dở:', e)
@@ -255,4 +256,3 @@ export const useCart = () => {
     loading
   }
 }
-

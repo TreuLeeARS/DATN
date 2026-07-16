@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import couponApi from '../../api/couponApi'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
@@ -42,7 +42,7 @@ export const CouponManager = () => {
   })
 
   // Fetch Coupons
-  const fetchCoupons = async () => {
+  const fetchCoupons = useCallback(async () => {
     try {
       setLoading(true)
       const res = await couponApi.getCouponsForAdmin({
@@ -60,11 +60,11 @@ export const CouponManager = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page])
 
   useEffect(() => {
     fetchCoupons()
-  }, [page])
+  }, [fetchCoupons])
 
   // Input change handler
   const handleInputChange = (e) => {
@@ -229,7 +229,6 @@ export const CouponManager = () => {
                 coupons.map((c) => {
                   const expired = isExpired(c.endDate)
                   const fullyUsed = c.currentUsage >= c.maxUsage
-                  const active = !expired && !fullyUsed
 
                   return (
                     <tr key={c.couponId} className="hover:bg-black/[0.01] transition-colors">

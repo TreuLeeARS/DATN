@@ -1,6 +1,82 @@
 import { useState, useEffect, useRef } from 'react'
 import { AddressMapModal } from './AddressMapModal.jsx'
 
+const normalizeLocationName = (value = '') => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/đ/g, 'd')
+  .replace(/Đ/g, 'D')
+  .toLowerCase()
+  .replace(/^(?:tinh|thanh pho|tp\.?|quan|huyen|thi xa|thi tran|phuong|xa)\s+/u, '')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim()
+
+const findAdministrativeUnit = (items, candidates) => {
+  for (const candidate of candidates.filter(Boolean)) {
+    const normalizedCandidate = normalizeLocationName(candidate)
+    if (!normalizedCandidate) continue
+
+    const exactMatch = items.find(item => (
+      [item.full_name, item.name]
+        .filter(Boolean)
+        .some(name => normalizeLocationName(name) === normalizedCandidate)
+    ))
+    if (exactMatch) return exactMatch
+
+    const partialMatch = items.find(item => (
+      [item.full_name, item.name]
+        .filter(Boolean)
+        .some(name => {
+          const normalizedName = normalizeLocationName(name)
+          return normalizedName.includes(normalizedCandidate) || normalizedCandidate.includes(normalizedName)
+        })
+    ))
+    if (partialMatch) return partialMatch
+  }
+
+  return null
+}
+
+const fetchAdministrativeUnits = async (level, parentId) => {
+  const response = await fetch(`https://esgoo.net/api-tinhthanh/${level}/${parentId}.htm`)
+  if (!response.ok) throw new Error(`Cannot load administrative level ${level}`)
+
+  const json = await response.json()
+  return json.error === 0 && Array.isArray(json.data) ? json.data : []
+}
+
+const getStreetFromGeocodedAddress = ({ displayName = '', address = {} }) => {
+  const road = address.road || address.pedestrian || address.residential || address.footway || address.path
+  const directStreet = [address.house_number, road].filter(Boolean).join(' ').trim()
+  if (directStreet) return directStreet
+
+  const administrativeNames = [
+    address.ward,
+    address.suburb,
+    address.quarter,
+    address.village,
+    address.neighbourhood,
+    address.hamlet,
+    address.city_district,
+    address.district,
+    address.county,
+    address.municipality,
+    address.town,
+    address.city,
+    address.province,
+    address.state,
+    address.country,
+    address.postcode
+  ].filter(Boolean).map(normalizeLocationName)
+
+  return displayName
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .filter(part => !administrativeNames.includes(normalizeLocationName(part)))
+    .join(', ')
+}
+
 export const AddressSelector = ({ value, onAddressChange, disabled, error }) => {
   // Administrative API state (Vietnam Location API)
   const [provinces, setProvinces] = useState([])
@@ -50,10 +126,6 @@ export const AddressSelector = ({ value, onAddressChange, disabled, error }) => 
   // 2. Fetch Districts whenever Province changes
   useEffect(() => {
     if (!selectedProvince?.id) {
-      setDistricts([])
-      setSelectedDistrict(null)
-      setWards([])
-      setSelectedWard(null)
       return
     }
 
@@ -81,8 +153,6 @@ export const AddressSelector = ({ value, onAddressChange, disabled, error }) => 
   // 3. Fetch Wards whenever District changes
   useEffect(() => {
     if (!selectedDistrict?.id) {
-      setWards([])
-      setSelectedWard(null)
       return
     }
 
@@ -121,7 +191,6 @@ export const AddressSelector = ({ value, onAddressChange, disabled, error }) => 
   // 4. Live autocomplete search as user types in street input
   useEffect(() => {
     if (!streetAddress || streetAddress.trim().length < 3) {
-      setSuggestions([])
       return
     }
 
@@ -136,9 +205,9 @@ export const AddressSelector = ({ value, onAddressChange, disabled, error }) => 
       setIsSearching(true)
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
             queryContext + ', Việt Nam'
-          )}&accept-language=vi&limit=5`
+          )}&addressdetails=1&accept-language=vi&limit=5`
         )
         if (res.ok) {
           const data = await res.json()
@@ -178,18 +247,34 @@ export const AddressSelector = ({ value, onAddressChange, disabled, error }) => 
 
   // Sync with parent form
   useEffect(() => {
-    if (isComplete && fullCompiledAddress !== value) {
-      onAddressChange(fullCompiledAddress)
-    } else if (!isComplete && value !== '') {
-      onAddressChange('')
+    const details = {
+      province: selectedProvince?.full_name || selectedProvince?.name || '',
+      district: selectedDistrict?.full_name || selectedDistrict?.name || '',
+      ward: selectedWard?.full_name || selectedWard?.name || '',
     }
-  }, [fullCompiledAddress, isComplete])
+
+    if (isComplete && fullCompiledAddress !== value) {
+      onAddressChange(fullCompiledAddress, details)
+    } else if (!isComplete && value !== '') {
+      onAddressChange('', { province: '', district: '', ward: '' })
+    }
+  }, [
+    fullCompiledAddress,
+    isComplete,
+    onAddressChange,
+    selectedDistrict,
+    selectedProvince,
+    selectedWard,
+    value,
+  ])
 
   const handleProvinceSelect = (e) => {
     const pId = e.target.value
     const found = provinces.find((p) => String(p.id) === String(pId))
     setSelectedProvince(found || null)
+    setDistricts([])
     setSelectedDistrict(null)
+    setWards([])
     setSelectedWard(null)
   }
 
@@ -197,6 +282,7 @@ export const AddressSelector = ({ value, onAddressChange, disabled, error }) => 
     const dId = e.target.value
     const found = districts.find((d) => String(d.id) === String(dId))
     setSelectedDistrict(found || null)
+    setWards([])
     setSelectedWard(null)
   }
 
@@ -206,14 +292,78 @@ export const AddressSelector = ({ value, onAddressChange, disabled, error }) => 
     setSelectedWard(found || null)
   }
 
-  const handleMapSelect = (mapAddress) => {
-    const cleanAddr = mapAddress.replace(', Việt Nam', '').replace(', Vietnam', '')
-    setStreetAddress(cleanAddr)
+  const applyGeocodedAddress = async (location) => {
+    const displayName = typeof location === 'string' ? location : location?.displayName || ''
+    const address = typeof location === 'string' ? {} : location?.address || {}
+    const cleanDisplayName = displayName.replace(', Việt Nam', '').replace(', Vietnam', '')
+
     setShowSuggestions(false)
+    setSelectedProvince(null)
+    setSelectedDistrict(null)
+    setSelectedWard(null)
+    setDistricts([])
+    setWards([])
+
+    try {
+      const province = findAdministrativeUnit(provinces, [
+        address.state,
+        address.province,
+        address.city
+      ])
+
+      if (!province) {
+        setStreetAddress(cleanDisplayName)
+        return
+      }
+
+      setSelectedProvince(province)
+      const districtOptions = await fetchAdministrativeUnits(2, province.id)
+      setDistricts(districtOptions)
+
+      const district = findAdministrativeUnit(districtOptions, [
+        address.city_district,
+        address.district,
+        address.county,
+        address.borough,
+        address.municipality,
+        address.town,
+        address.city
+      ])
+
+      if (!district) {
+        setStreetAddress(getStreetFromGeocodedAddress({ displayName: cleanDisplayName, address }))
+        return
+      }
+
+      setSelectedDistrict(district)
+      const wardOptions = await fetchAdministrativeUnits(3, district.id)
+      setWards(wardOptions)
+
+      const ward = findAdministrativeUnit(wardOptions, [
+        address.ward,
+        address.suburb,
+        address.quarter,
+        address.village,
+        address.neighbourhood,
+        address.hamlet
+      ])
+      setSelectedWard(ward)
+      setStreetAddress(getStreetFromGeocodedAddress({ displayName: cleanDisplayName, address }))
+    } catch (err) {
+      console.error('Lỗi tách địa chỉ GPS theo Tỉnh/Quận/Phường:', err)
+      setStreetAddress(cleanDisplayName)
+    }
+  }
+
+  const handleMapSelect = (mapLocation) => {
+    void applyGeocodedAddress(mapLocation)
   }
 
   const handleSelectSuggestion = (item) => {
-    setStreetAddress(item.displayName)
+    void applyGeocodedAddress({
+      displayName: item.displayName,
+      address: item.raw?.address || {}
+    })
     setShowSuggestions(false)
   }
 
@@ -308,8 +458,14 @@ export const AddressSelector = ({ value, onAddressChange, disabled, error }) => 
             type="text"
             value={streetAddress}
             onChange={(e) => {
-              setStreetAddress(e.target.value)
-              setShowSuggestions(true)
+              const nextAddress = e.target.value
+              setStreetAddress(nextAddress)
+              if (nextAddress.trim().length < 3) {
+                setSuggestions([])
+                setShowSuggestions(false)
+              } else {
+                setShowSuggestions(true)
+              }
             }}
             onFocus={() => {
               if (suggestions.length > 0) setShowSuggestions(true)

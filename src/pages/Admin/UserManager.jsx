@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import userApi from '../../api/userApi'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
+import { isAdmin } from '../../utils/auth.js'
 
 export const UserManager = () => {
+  const canManageUsers = isAdmin()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
@@ -116,6 +118,8 @@ export const UserManager = () => {
 
   useEffect(() => {
     fetchUsers()
+    // Search fields are submitted explicitly; typing must not trigger API requests.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])
 
   useEffect(() => {
@@ -279,17 +283,34 @@ export const UserManager = () => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
-    if (!editForm.email.trim() || !editForm.phone.trim()) {
+    const email = editForm.email.trim()
+    const phone = editForm.phone.replace(/\s/g, '')
+    const firstName = editForm.firstName.trim()
+    const lastName = editForm.lastName.trim()
+
+    if (!email || !phone) {
       toast.error('Vui lòng cung cấp đầy đủ email và số điện thoại.')
+      return
+    }
+    if (email.length < 6 || email.length > 30 || !/\S+@\S+\.\S+/.test(email)) {
+      toast.error('Email phải hợp lệ và có độ dài từ 6 đến 30 ký tự.')
+      return
+    }
+    if (!/^(0|\+84)\d{9,10}$/.test(phone)) {
+      toast.error('Số điện thoại không đúng định dạng Việt Nam.')
+      return
+    }
+    if ((firstName && firstName.length < 2) || (lastName && lastName.length < 2)) {
+      toast.error('Họ và tên, nếu nhập, phải có ít nhất 2 ký tự.')
       return
     }
 
     try {
       await userApi.updateUser(editingUser.username, {
-        firstName: editForm.firstName,
-        lastName: editForm.lastName,
-        email: editForm.email,
-        phone: editForm.phone,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        email,
+        phone,
         isActive: editForm.isActive
       })
       toast.success(`Cập nhật thông tin tài khoản ${editingUser.username} thành công!`)
@@ -406,7 +427,9 @@ export const UserManager = () => {
                 <th className="py-4 px-4 font-semibold w-32">Số điện thoại</th>
                 <th className="py-4 px-4 font-semibold w-40 text-center">Vai trò</th>
                 <th className="py-4 px-4 font-semibold w-24 text-center">Trạng thái</th>
-                <th className="py-4 px-4 font-semibold w-56 text-center">Thao tác quản lý</th>
+                <th className="py-4 px-4 font-semibold w-56 text-center">
+                  {canManageUsers ? 'Thao tác quản lý' : 'Quyền truy cập'}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs">
@@ -433,10 +456,10 @@ export const UserManager = () => {
                   const isLocked = u.isActive === false
                   const isCustomer = !hasRole(u, 'ADMIN') && !hasRole(u, 'STAFF')
                   return (
-                    <tr key={u.userId || u.username} className="hover:bg-black/[0.01] transition-colors">
+                    <tr key={u.id || u.username} className="hover:bg-black/[0.01] transition-colors">
                       <td className="py-4 px-4">
                         <p className="font-semibold text-brand-charcoal">{u.username}</p>
-                        <p className="text-[9px] text-brand-muted mt-0.5 font-mono">UID: {u.userId || 'N/A'}</p>
+                        <p className="text-[9px] text-brand-muted mt-0.5 font-mono">UID: {u.id || 'N/A'}</p>
                         {(u.createdAt || u.updatedAt) && (
                           <div className="text-[9px] text-brand-muted/70 mt-1 font-normal space-y-0.5 select-none normal-case">
                             {u.createdAt && (
@@ -468,6 +491,10 @@ export const UserManager = () => {
                         )}
                       </td>
                       <td className="py-4 px-4 text-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
+                        {!canManageUsers ? (
+                          <span className="text-[9px] uppercase tracking-wider text-brand-muted">Chỉ xem</span>
+                        ) : (
+                          <>
                         <button
                           onClick={() => handleOpenEditModal(u)}
                           className="text-[9.5px] uppercase tracking-wider font-semibold text-brand-charcoal hover:underline cursor-pointer"
@@ -522,6 +549,8 @@ export const UserManager = () => {
                         >
                           Khóa
                         </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   )
@@ -556,7 +585,7 @@ export const UserManager = () => {
       </div>
 
       {/* ─── MODAL: EDIT USER PROFILE ─── */}
-      {isEditModalOpen && (
+      {canManageUsers && isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-charcoal/60 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-md bg-white border border-black/10 shadow-2xl p-6 md:p-8 space-y-6 rounded-none">
             

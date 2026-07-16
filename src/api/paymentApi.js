@@ -1,6 +1,11 @@
 import axiosClient from './axiosClient';
 
 const paymentApi = {
+  // Lấy danh sách phương thức thanh toán do BE cấu hình
+  getPaymentMethods: () => {
+    return axiosClient.get('/payment-methods');
+  },
+
   // Tạo thanh toán COD
   createCodPayment: (data) => {
     // data: { orderId, amount }
@@ -17,9 +22,9 @@ const paymentApi = {
     return axiosClient.get(`/payments/${orderId}`);
   },
 
-  // Lấy trạng thái thanh toán theo ID đơn hàng
-  getPaymentStatusByOrderId: (orderId) => {
-    return axiosClient.get(`/payments/status/${orderId}`);
+  // BE nhận ID đơn hàng hoặc mã MoMo dạng BEE_STORE_{paymentId}
+  getPaymentStatusByOrderId: (orderOrMomoPaymentId) => {
+    return axiosClient.get(`/payments/status/${orderOrMomoPaymentId}`);
   }
 };
 

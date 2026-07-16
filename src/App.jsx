@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react'
+import { useEffect, lazy } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { Header } from './components/Header/index.js'
@@ -11,10 +11,10 @@ import { CartProvider } from './context/CartContext.jsx'
 import { AuthPage, ResetPasswordPage } from './pages/AuthPage/index.js'
 import { ShopPage } from './pages/ShopPage/index.js'
 import { CartPage } from './pages/CartPage/index.js'
-import { ShopPromptModal } from './components/ShopPromptModal/ShopPromptModal.jsx'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { NotFoundPage } from './pages/NotFoundPage.jsx'
 import { AboutPage } from './pages/AboutPage/AboutPage.jsx'
+import { PaymentResultPage } from './pages/PaymentResultPage.jsx'
 
 // Admin Panel Components & Pages (Lazy loaded for client performance)
 import { AdminProtectedRoute } from './components/AdminProtectedRoute.jsx'
@@ -31,13 +31,6 @@ const PopupManager = lazy(() => import('./pages/Admin/PopupManager.jsx').then(m 
 const InvoiceManager = lazy(() => import('./pages/Admin/InvoiceManager.jsx').then(m => ({ default: m.InvoiceManager })))
 const ActionLogManager = lazy(() => import('./pages/Admin/ActionLogManager.jsx').then(m => ({ default: m.ActionLogManager })))
 
-
-// Simple loading indicator for Suspense
-const AdminLoading = () => (
-  <div className="flex items-center justify-center min-h-[400px]">
-    <div className="w-8 h-8 border-4 border-brand-charcoal border-t-transparent rounded-full animate-spin"></div>
-  </div>
-)
 
 function App() {
   const location = useLocation()
@@ -113,7 +106,6 @@ function App() {
                   </div>
                 </main>
                 <Footer />
-                <ShopPromptModal />
               </>
             }
           />
@@ -133,6 +125,9 @@ function App() {
           {/* Customer Order History Page */}
           <Route path="/my-orders" element={<MyOrders />} />
 
+          {/* MoMo redirects here; the page verifies the result with BE */}
+          <Route path="/payment-success" element={<PaymentResultPage />} />
+
           {/* About us page */}
           <Route path="/about" element={<AboutPage />} />
 
@@ -151,9 +146,9 @@ function App() {
             <Route path="orders" element={<OrderManager />} />
             <Route path="invoices" element={<InvoiceManager />} />
             <Route path="users" element={<UserManager />} />
-            <Route path="coupons" element={<CouponManager />} />
+            <Route path="coupons" element={<AdminProtectedRoute adminOnly><CouponManager /></AdminProtectedRoute>} />
             <Route path="popups" element={<PopupManager />} />
-            <Route path="action-logs" element={<ActionLogManager />} />
+            <Route path="action-logs" element={<AdminProtectedRoute adminOnly><ActionLogManager /></AdminProtectedRoute>} />
           </Route>
 
           {/* IMP-01 FIX: Catch-all route to prevent blank page for invalid paths */}

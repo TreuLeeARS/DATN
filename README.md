@@ -7,8 +7,7 @@ A fully responsive, modern landing page for a premium women's clothing brand bui
 ### Core Components
 - Hero Section with animated headline reveal and parallax image
 - Product Grid (4 columns) with hover animations and scroll-triggered stagger
-- AI Styling Assistant floating chat panel (Phase 1)
-- AI Personalized Recommendations section (Phase 2)
+- Product recommendations loaded from the backend
 - Responsive Navigation with mobile menu toggle
 - Newsletter subscription in footer
 - Shopping cart with real-time counter
@@ -18,7 +17,6 @@ A fully responsive, modern landing page for a premium women's clothing brand bui
 - Stagger effects on product cards
 - Interactive hover transformations
 - Parallax scrolling on hero image
-- Smooth panel open/close transitions
 
 ### Design
 - Custom Tailwind color palette (cream, blush, charcoal)
@@ -43,19 +41,14 @@ src/
 │   ├── Header/              Navigation with cart
 │   ├── Hero/                Animated hero section
 │   ├── ProductGrid/         Product cards with grid
-│   ├── AIStylingAssistant/  Floating chat bubble
-│   ├── AIRecommendations/   Personalized product picks
+│   ├── AIRecommendations/   Backend product recommendations
 │   └── Footer/              Links & newsletter
 ├── hooks/
-│   ├── useCart.js           Cart state management
-│   ├── useAIChat.js         Chat state & message flow
-│   └── useScrollTrigger.js  Reusable scroll animations
+│   └── useCart.js           Cart state management
 ├── context/
 │   └── CartContext.jsx      Global cart provider
 ├── data/
-│   ├── products.js          12 mock products
-│   ├── navLinks.js          Navigation & footer config
-│   └── aiResponses.js       Intent map & recommendations
+│   └── navLinks.js          Navigation & footer config
 ├── utils/
 │   ├── gsapDefaults.js      Animation constants
 │   └── cn.js                Classnames utility
@@ -77,25 +70,12 @@ useLayoutEffect(() => {
 
 **Hero**: Word-split headline (0.7s stagger), parallax image on scroll  
 **Products**: Stagger batch on scroll (0.1s spacing), hover timeline on cards  
-**Chat**: Scale/opacity panel with back easing  
 **Sections**: Fade-up reveals on scroll trigger  
 
-## AI Features (Phased)
+## Product Recommendations
 
-### Phase 1: AI Styling Assistant
-- Floating chat bubble with pulsing idle state
-- Keyword-based intent detection (offline mock)
-- Message thread with typing indicator
-- Quick suggestion buttons
-
-**Upgrade**: Replace `getResponse()` in aiResponses.js with LLM API call
-
-### Phase 2: AI Personalized Recommendations  
-- Lazy-loads when section scrolls into view (once only)
-- Shows 4 recommended products with reason chips
-- Loading spinner during fetch
-
-**Upgrade**: Replace `getMockRecommendations()` with real API call
+- Loads real products from the backend.
+- Shows recommendation cards with product variants and current prices.
 
 ## Brand Tokens
 
@@ -117,7 +97,6 @@ Upload `dist` folder to Vercel, Netlify, or any static host.
 - Hero animations fire on page load
 - Products stagger in on scroll
 - Product hover: scale + overlay effect
-- Chat: open/close, send message, get response
 - Recommendations load when scrolled to section
 - Mobile menu toggle works on all sizes
 - Newsletter subscription submit works

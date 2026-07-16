@@ -47,8 +47,10 @@ export const LoginForm = ({ onSwitchTab, onForgotPassword }) => {
     }
     if (!form.password) {
       newErrors.password = 'Vui lòng nhập mật khẩu'
-    } else if (form.password.length < 6) {
-      newErrors.password = 'Mật khẩu tối thiểu 6 ký tự'
+    } else if (form.password.length < 6 || form.password.length > 20) {
+      newErrors.password = 'Mật khẩu phải từ 6 đến 20 ký tự'
+    } else if (!/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/.test(form.password)) {
+      newErrors.password = 'Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số'
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0

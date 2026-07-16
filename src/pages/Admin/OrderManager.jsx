@@ -5,8 +5,11 @@ import toast from 'react-hot-toast'
 import orderApi from '../../api/orderApi'
 import paymentApi from '../../api/paymentApi'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
+import { isAdminOrStaff } from '../../utils/auth.js'
+import { parseShippingAddress } from '../../utils/shippingAddress.js'
 
 export const OrderManager = () => {
+  const canCancelOrders = isAdminOrStaff()
   const [allOrders, setAllOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
@@ -38,15 +41,10 @@ export const OrderManager = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [loadingPayment, setLoadingPayment] = useState(false)
+  const availableStatuses = [...new Set(allOrders.map(order => order.status).filter(Boolean))]
   
   const filteredOrders = allOrders.filter(o => {
     if (statusFilter === 'ALL') return true
-    if (statusFilter === 'CREATED') {
-      return o.status === 'CREATED' || o.status === 'PENDING'
-    }
-    if (statusFilter === 'CANCELED') {
-      return o.status === 'CANCELED' || o.status === 'CANCELLED'
-    }
     return o.status === statusFilter
   })
 
@@ -55,10 +53,6 @@ export const OrderManager = () => {
   const activePage = Math.min(page, totalPages - 1)
   const displayedOrders = filteredOrders.slice(activePage * pageSize, (activePage + 1) * pageSize)
  
-  useEffect(() => {
-    fetchOrders()
-  }, [])
-  
   const fetchOrders = async () => {
     try {
       setLoading(true)
@@ -78,26 +72,9 @@ export const OrderManager = () => {
     }
   }
 
-  // --- PARSE SHIPPING INFO HELPER ---
-  const parseShippingAddress = (str) => {
-    if (!str) return { fullName: 'Chưa có', phone: 'Chưa có', address: 'Chưa có' }
-    
-    // Format expected: "FullName | SĐT: Phone | Địa chỉ: Address"
-    const parts = str.split(' | ')
-    let fullName = parts[0] || 'N/A'
-    let phone = 'Chưa có'
-    let address = 'Chưa có'
-
-    parts.forEach(part => {
-      if (part.startsWith('SĐT: ')) {
-        phone = part.replace('SĐT: ', '')
-      } else if (part.startsWith('Địa chỉ: ')) {
-        address = part.replace('Địa chỉ: ', '')
-      }
-    })
-
-    return { fullName, phone, address }
-  }
+  useEffect(() => {
+    fetchOrders()
+  }, [])
 
   // --- FETCH ORDER PAYMENT METHOD INFO ---
   const fetchPaymentInfo = async (orderId) => {
@@ -115,6 +92,13 @@ export const OrderManager = () => {
     }
   }
 
+  const refreshSelectedOrder = async (orderId) => {
+    const res = await orderApi.getAdminOrderDetails(orderId)
+    if (res?.data) {
+      setSelectedOrder(res.data)
+    }
+  }
+
   const handleOpenDetailModal = (order) => {
     setSelectedOrder(order)
     setIsModalOpen(true)
@@ -125,13 +109,9 @@ export const OrderManager = () => {
 
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
-      await orderApi.updateOrderStatus(orderId, newStatus)
-      toast.success(`Cập nhật trạng thái đơn hàng thành công!`)
-      fetchOrders()
-      // Refresh modal view if open
-      if (selectedOrder && selectedOrder.orderId === orderId) {
-        setSelectedOrder(prev => ({ ...prev, status: newStatus }))
-      }
+      const res = await orderApi.updateOrderStatus(orderId, newStatus)
+      toast.success(res?.message || 'Cập nhật trạng thái đơn hàng thành công!')
+      await Promise.all([fetchOrders(), refreshSelectedOrder(orderId)])
     } catch (err) {
       console.error('Error updating status:', err)
       toast.error('Cập nhật trạng thái thất bại. Vui lòng kiểm tra lại.')
@@ -140,12 +120,9 @@ export const OrderManager = () => {
 
   const handleShipOrder = async (orderId) => {
     try {
-      await orderApi.setStatusIsShipping(orderId)
-      toast.success('Bắt đầu giao hàng! Đơn hàng đã chuyển sang trạng thái SHIPPING.')
-      fetchOrders()
-      if (selectedOrder && selectedOrder.orderId === orderId) {
-        setSelectedOrder(prev => ({ ...prev, status: 'SHIPPING' }))
-      }
+      const res = await orderApi.setStatusIsShipping(orderId)
+      toast.success(res?.message || 'Cập nhật trạng thái giao hàng thành công!')
+      await Promise.all([fetchOrders(), refreshSelectedOrder(orderId)])
     } catch (err) {
       console.error('Error setting shipping:', err)
       toast.error('Lỗi khi chuyển trạng thái giao hàng.')
@@ -154,12 +131,9 @@ export const OrderManager = () => {
 
   const handleDeliverOrder = async (orderId) => {
     try {
-      await orderApi.setStatusIsDelivered(orderId)
-      toast.success('Đơn hàng đã được giao thành công! Trạng thái đổi thành DELIVERED.')
-      fetchOrders()
-      if (selectedOrder && selectedOrder.orderId === orderId) {
-        setSelectedOrder(prev => ({ ...prev, status: 'DELIVERED' }))
-      }
+      const res = await orderApi.setStatusIsDelivered(orderId)
+      toast.success(res?.message || 'Cập nhật trạng thái giao hàng thành công!')
+      await Promise.all([fetchOrders(), refreshSelectedOrder(orderId)])
     } catch (err) {
       console.error('Error setting delivered:', err)
       toast.error('Lỗi khi cập nhật đã giao hàng.')
@@ -172,12 +146,10 @@ export const OrderManager = () => {
       'Bạn có chắc chắn muốn HỦY đơn hàng này?',
       async () => {
         try {
-          await orderApi.cancelOrder(orderId)
-          toast.success('Đơn hàng đã được hủy thành công!')
-          fetchOrders()
-          if (selectedOrder && selectedOrder.orderId === orderId) {
-            setSelectedOrder(prev => ({ ...prev, status: 'CANCELLED' }))
-          }
+          const res = await orderApi.cancelOrder(orderId)
+          toast.success(res?.message || 'Đơn hàng đã được hủy thành công!')
+          if (res?.data) setSelectedOrder(res.data)
+          await fetchOrders()
         } catch (err) {
           console.error('Error cancelling order:', err)
           toast.error('Không thể hủy đơn hàng.')
@@ -190,9 +162,13 @@ export const OrderManager = () => {
   // --- CONFIRM COD PAYMENT ---
   const handleConfirmCodPayment = async (paymentId, orderId) => {
     try {
-      await paymentApi.confirmCodPayment(paymentId)
-      toast.success('Xác nhận thanh toán COD thành công! Tiền mặt đã thu.')
-      fetchPaymentInfo(orderId) // reload payment info
+      const res = await paymentApi.confirmCodPayment(paymentId)
+      toast.success(res?.message || 'Xác nhận thanh toán thành công!')
+      await Promise.all([
+        fetchPaymentInfo(orderId),
+        refreshSelectedOrder(orderId),
+        fetchOrders(),
+      ])
     } catch (err) {
       console.error('Error confirming payment:', err)
       toast.error('Lỗi khi xác nhận thanh toán.')
@@ -203,7 +179,6 @@ export const OrderManager = () => {
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case 'CREATED':
-      case 'PENDING':
         return 'bg-amber-50 text-amber-700 border-amber-200'
       case 'CONFIRMED':
         return 'bg-blue-50 text-blue-700 border-blue-200'
@@ -212,7 +187,6 @@ export const OrderManager = () => {
       case 'DELIVERED':
         return 'bg-green-50 text-green-700 border-green-200'
       case 'CANCELED':
-      case 'CANCELLED':
         return 'bg-red-50 text-red-700 border-red-200'
       default:
         return 'bg-gray-50 text-gray-700 border-gray-200'
@@ -222,7 +196,6 @@ export const OrderManager = () => {
   const getStatusTranslation = (status) => {
     switch (status) {
       case 'CREATED':
-      case 'PENDING': 
         return 'Chờ xử lý'
       case 'CONFIRMED': 
         return 'Đã xác nhận'
@@ -231,10 +204,19 @@ export const OrderManager = () => {
       case 'DELIVERED': 
         return 'Đã nhận hàng'
       case 'CANCELED':
-      case 'CANCELLED': 
         return 'Đã hủy đơn'
       default: 
         return status
+    }
+  }
+
+  const getPaymentStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'SUCCESS': return 'bg-green-50 text-green-700 border-green-200'
+      case 'FAILED': return 'bg-red-50 text-red-700 border-red-200'
+      case 'REFUNDED': return 'bg-blue-50 text-blue-700 border-blue-200'
+      case 'PENDING': return 'bg-amber-50 text-amber-700 border-amber-200'
+      default: return 'bg-gray-50 text-gray-600 border-gray-200'
     }
   }
 
@@ -244,13 +226,19 @@ export const OrderManager = () => {
       {/* ─── TITLE BAR ─── */}
       <div className="bg-white p-6 border border-black/10 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold uppercase tracking-wider text-brand-charcoal">Quản lý đơn hàng</h2>
-          <p className="text-xs text-brand-muted mt-1">Quản lý danh sách đặt hàng, trạng thái vận chuyển và thông tin thanh toán hóa đơn</p>
+          <h2 className="text-xl font-bold uppercase tracking-wider text-brand-charcoal">
+            {canCancelOrders ? 'Quản lý đơn hàng' : 'Xử lý đơn hàng'}
+          </h2>
+          <p className="text-xs text-brand-muted mt-1">
+            {canCancelOrders
+              ? 'Quản lý danh sách đặt hàng, trạng thái vận chuyển và thông tin thanh toán hóa đơn'
+              : 'Xác nhận đơn, cập nhật trạng thái vận chuyển và kiểm tra thanh toán COD'}
+          </p>
         </div>
 
         {/* Status Tabs/Filters */}
         <div className="flex flex-wrap gap-1.5 bg-brand-cream/50 p-1 border border-gray-200">
-          {['ALL', 'CREATED', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELED'].map((tab) => (
+          {['ALL', ...availableStatuses].map((tab) => (
             <button
               key={tab}
               onClick={() => { setStatusFilter(tab); setPage(0) }}
@@ -303,24 +291,19 @@ export const OrderManager = () => {
               ) : (
                 displayedOrders.map((o) => {
                   const shipInfo = parseShippingAddress(o.shippingAddress)
-                  const orderDate = o.createdAt ? new Date(o.createdAt).toLocaleDateString('vi-VN') : 'N/A'
+                  const orderDate = o.orderDate ? new Date(o.orderDate).toLocaleDateString('vi-VN') : 'N/A'
                   return (
                     <tr key={o.orderId} className="hover:bg-black/[0.01] transition-colors">
                       <td className="py-4 px-4">
                         <p className="font-bold text-brand-charcoal">#{o.orderId}</p>
-                        {(o.createdAt || o.orderDate || o.updatedAt) && (
+                        {o.orderDate && (
                           <div className="text-[9px] text-brand-muted/70 mt-1 font-normal space-y-0.5 select-none normal-case">
-                            {(o.createdAt || o.orderDate) && (
-                              <p>Tạo: {o.createdBy || shipInfo.fullName || 'Khách hàng'} ({new Date(o.createdAt || o.orderDate).toLocaleString('vi-VN')})</p>
-                            )}
-                            {o.updatedAt && (
-                              <p>Sửa: {o.lastModifiedBy || 'Hệ thống'} ({new Date(o.updatedAt).toLocaleString('vi-VN')})</p>
-                            )}
+                            <p>Đặt bởi: {shipInfo.fullName || 'Khách hàng'} ({new Date(o.orderDate).toLocaleString('vi-VN')})</p>
                           </div>
                         )}
                       </td>
-                      <td className="py-4 px-4 font-medium text-brand-charcoal">{shipInfo.fullName}</td>
-                      <td className="py-4 px-4 text-brand-muted">{shipInfo.phone}</td>
+                      <td className="py-4 px-4 font-medium text-brand-charcoal">{shipInfo.fullName || 'Chưa có'}</td>
+                      <td className="py-4 px-4 text-brand-muted">{shipInfo.phone || 'Chưa có'}</td>
                       <td className="py-4 px-4 text-brand-muted">{orderDate}</td>
                       <td className="py-4 px-4 font-semibold text-brand-charcoal">
                         {formatVND(o.totalAmount)}
@@ -335,7 +318,7 @@ export const OrderManager = () => {
                            onClick={() => handleOpenDetailModal(o)}
                           className="text-[10px] uppercase tracking-wider font-semibold text-brand-charcoal hover:underline"
                         >
-                          Chi tiết / Duyệt
+                          Chi tiết / Xử lý
                         </button>
                       </td>
                     </tr>
@@ -380,7 +363,7 @@ export const OrderManager = () => {
                 <h3 className="text-sm font-bold uppercase tracking-wider text-brand-charcoal">
                   Chi tiết đơn hàng #{selectedOrder.orderId}
                 </h3>
-                <p className="text-[10px] text-brand-muted mt-0.5">Đặt ngày: {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString('vi-VN') : 'N/A'}</p>
+                <p className="text-[10px] text-brand-muted mt-0.5">Đặt ngày: {selectedOrder.orderDate ? new Date(selectedOrder.orderDate).toLocaleString('vi-VN') : 'N/A'}</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="text-brand-charcoal text-sm hover:opacity-70 font-semibold">✕</button>
             </div>
@@ -394,10 +377,12 @@ export const OrderManager = () => {
                   const info = parseShippingAddress(selectedOrder.shippingAddress)
                   return (
                     <div className="space-y-1.5 text-brand-charcoal">
-                      <p><span className="font-semibold text-brand-muted">Người nhận:</span> {info.fullName}</p>
-                      <p><span className="font-semibold text-brand-muted">Số điện thoại:</span> {info.phone}</p>
-                      <p><span className="font-semibold text-brand-muted">Địa chỉ nhận:</span> {info.address}</p>
-                      <p><span className="font-semibold text-brand-muted">Ghi chú:</span> {selectedOrder.note || 'Không có ghi chú'}</p>
+                      <p><span className="font-semibold text-brand-muted">Người nhận:</span> {info.fullName || 'Chưa có'}</p>
+                      <p><span className="font-semibold text-brand-muted">Số điện thoại:</span> {info.phone || 'Chưa có'}</p>
+                      <p><span className="font-semibold text-brand-muted">Địa chỉ nhận:</span> {info.address || 'Chưa có'}</p>
+                      <p><span className="font-semibold text-brand-muted">Phường/Xã:</span> {selectedOrder.ward || 'BE chưa trả dữ liệu'}</p>
+                      <p><span className="font-semibold text-brand-muted">Quận/Huyện:</span> {selectedOrder.district || 'BE chưa trả dữ liệu'}</p>
+                      <p><span className="font-semibold text-brand-muted">Tỉnh/Thành:</span> {selectedOrder.province || 'BE chưa trả dữ liệu'}</p>
                     </div>
                   )
                 })()}
@@ -411,22 +396,22 @@ export const OrderManager = () => {
                     <p className="text-brand-muted">Đang tải thông tin thanh toán...</p>
                   ) : paymentInfo ? (
                     <>
-                      <p><span className="font-semibold text-brand-muted">Phương thức:</span> {paymentInfo.paymentMethod || 'COD'}</p>
-                      <p><span className="font-semibold text-brand-muted">Mã thanh toán:</span> ID_{paymentInfo.paymentId}</p>
-                      <p><span className="font-semibold text-brand-muted">Tổng thanh toán:</span> {formatVND(paymentInfo.amount)}</p>
+                      <p><span className="font-semibold text-brand-muted">Phương thức:</span> {paymentInfo.paymentMethod || 'Chưa có dữ liệu từ BE'}</p>
+                      {paymentInfo.paymentId != null && (
+                        <p><span className="font-semibold text-brand-muted">Mã thanh toán:</span> {paymentInfo.paymentId}</p>
+                      )}
+                      {paymentInfo.amount != null && (
+                        <p><span className="font-semibold text-brand-muted">Tổng thanh toán:</span> {formatVND(paymentInfo.amount)}</p>
+                      )}
                       <p className="flex items-center gap-1.5">
                         <span className="font-semibold text-brand-muted">Trạng thái:</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          paymentInfo.status === 'PAID' 
-                            ? 'bg-green-50 text-green-700 border-green-200' 
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
-                        }`}>
-                          {paymentInfo.status === 'PAID' ? 'ĐÃ THANH TOÁN' : 'CHƯA THANH TOÁN'}
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getPaymentStatusBadgeClass(paymentInfo.status)}`}>
+                          {paymentInfo.status || 'Chưa có dữ liệu từ BE'}
                         </span>
                       </p>
                       
                       {/* Confirm COD Payment Trigger for Admin */}
-                      {paymentInfo.paymentMethod === 'COD' && paymentInfo.status !== 'PAID' && (selectedOrder.status === 'SHIPPING' || selectedOrder.status === 'DELIVERED') && (
+                      {paymentInfo.paymentMethod?.toUpperCase().includes('COD') && paymentInfo.status !== 'SUCCESS' && (selectedOrder.status === 'CONFIRMED' || selectedOrder.status === 'SHIPPING') && (
                         <button
                           type="button"
                           onClick={() => handleConfirmCodPayment(paymentInfo.paymentId, selectedOrder.orderId)}
@@ -471,14 +456,18 @@ export const OrderManager = () => {
               <div className="w-52 space-y-1.5 text-right">
                 <p className="flex justify-between">
                   <span className="text-brand-muted">Thành tiền:</span>
-                  <span>{formatVND(selectedOrder.totalAmount)}</span>
+                  <span>{formatVND(selectedOrder.subtotalAmount)}</span>
                 </p>
-                {selectedOrder.couponCode && (
-                  <p className="flex justify-between text-brand-blush">
-                    <span className="text-brand-muted">Mã giảm giá ({selectedOrder.couponCode}):</span>
-                    <span>Đã áp dụng</span>
+                {Number(selectedOrder.discountValue || 0) > 0 && (
+                  <p className="flex justify-between text-green-700">
+                    <span>Mã giảm giá{selectedOrder.couponCode ? ` (${selectedOrder.couponCode})` : ''}:</span>
+                    <span>-{formatVND(selectedOrder.discountValue)}</span>
                   </p>
                 )}
+                <p className="flex justify-between">
+                  <span className="text-brand-muted">Phí vận chuyển:</span>
+                  <span>{formatVND(selectedOrder.shippingFee)}</span>
+                </p>
                 <p className="flex justify-between text-sm font-bold text-brand-charcoal border-t border-gray-100 pt-1.5">
                   <span className="text-brand-muted">Tổng thu:</span>
                   <span>{formatVND(selectedOrder.totalAmount)}</span>
@@ -497,7 +486,7 @@ export const OrderManager = () => {
 
               <div className="flex gap-2">
                 {/* 1. Confirm / Prepare shipment */}
-                {(selectedOrder.status === 'CREATED' || selectedOrder.status === 'PENDING') && (
+                {selectedOrder.status === 'CREATED' && (
                   <button
                     onClick={() => handleUpdateStatus(selectedOrder.orderId, 'CONFIRMED')}
                     className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold tracking-wider uppercase px-4 py-2.5 rounded-none cursor-pointer"
@@ -507,7 +496,7 @@ export const OrderManager = () => {
                 )}
                 
                 {/* 2. Dispatch / Start shipping */}
-                {(selectedOrder.status === 'CREATED' || selectedOrder.status === 'PENDING' || selectedOrder.status === 'CONFIRMED') && (
+                {selectedOrder.status === 'CONFIRMED' && (
                   <button
                     onClick={() => handleShipOrder(selectedOrder.orderId)}
                     className="bg-brand-charcoal hover:bg-brand-dark text-white text-[10px] font-bold tracking-wider uppercase px-4 py-2.5 rounded-none cursor-pointer"
@@ -527,7 +516,7 @@ export const OrderManager = () => {
                 )}
 
                 {/* 4. Cancel Order */}
-                {selectedOrder.status !== 'DELIVERED' && selectedOrder.status !== 'CANCELLED' && selectedOrder.status !== 'CANCELED' && (
+                {canCancelOrders && (selectedOrder.status === 'CREATED' || selectedOrder.status === 'CONFIRMED') && (
                   <button
                     onClick={() => handleCancelOrder(selectedOrder.orderId)}
                     className="border border-red-600 text-red-600 hover:bg-red-50 text-[10px] font-bold tracking-wider uppercase px-4 py-2.5 rounded-none cursor-pointer"

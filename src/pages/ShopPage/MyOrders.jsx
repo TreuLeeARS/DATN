@@ -8,6 +8,7 @@ import orderApi from '../../api/orderApi'
 import paymentApi from '../../api/paymentApi'
 import invoiceApi from '../../api/invoiceApi.js'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
+import { parseShippingAddress } from '../../utils/shippingAddress.js'
 
 
 export const MyOrders = () => {
@@ -17,7 +18,7 @@ export const MyOrders = () => {
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [expandedOrderId, setExpandedOrderId] = useState(null)
-  const [paymentStatuses, setPaymentStatuses] = useState({}) // orderId -> status text
+  const [paymentDetails, setPaymentDetails] = useState({}) // orderId -> PaymentStatusResponse từ BE
   const [myInvoices, setMyInvoices] = useState([])
 
 
@@ -52,6 +53,20 @@ export const MyOrders = () => {
     }
   }, [navigate])
 
+  const fetchOrderPaymentStatus = async (orderId) => {
+    try {
+      const res = await paymentApi.getPaymentStatusByOrderId(orderId)
+      if (res?.data) {
+        setPaymentDetails(prev => ({
+          ...prev,
+          [orderId]: res.data
+        }))
+      }
+    } catch (error) {
+      console.error(`Error loading payment status for order #${orderId}:`, error)
+    }
+  }
+
   // 2. Fetch danh sách đơn hàng của tôi
   useEffect(() => {
     const fetchMyOrders = async () => {
@@ -82,20 +97,6 @@ export const MyOrders = () => {
     fetchMyOrders()
   }, [page])
 
-  const fetchOrderPaymentStatus = async (orderId) => {
-    try {
-      const res = await paymentApi.getPaymentStatusByOrderId(orderId)
-      if (res && res.data) {
-        setPaymentStatuses(prev => ({
-          ...prev,
-          [orderId]: res.data.paymentStatus || res.data.status
-        }))
-      }
-    } catch (e) {
-      console.error(`Error loading payment status for order #${orderId}:`, e)
-    }
-  }
-
   // Fetch my invoices
   const fetchMyInvoices = async () => {
     try {
@@ -113,9 +114,9 @@ export const MyOrders = () => {
 
   useEffect(() => {
     fetchMyInvoices()
-  }, [orders])
+  }, [])
 
-  const handlePrintInvoice = (invoice) => {
+  const handlePrintInvoice = (invoice, paymentInfo) => {
     if (!invoice) return
 
     const printWindow = window.open('', '_blank')
@@ -127,23 +128,20 @@ export const MyOrders = () => {
     const dateStr = invoice.invoiceDate
       ? new Date(invoice.invoiceDate).toLocaleString('vi-VN')
       : 'N/A'
-    const orderDateStr = invoice.order?.orderDate
-      ? new Date(invoice.order.orderDate).toLocaleString('vi-VN')
-      : 'N/A'
-
-    const customerName = invoice.order?.user
+    const shippingInfo = parseShippingAddress(invoice.order?.shippingAddress)
+    const customerName = shippingInfo.fullName || (invoice.order?.user
       ? `${invoice.order.user.lastName || ''} ${invoice.order.user.firstName || ''}`.trim() || invoice.order.user.username
-      : 'Khách hàng'
+      : 'Khách hàng')
     
-    const customerPhone = invoice.order?.user?.phone || 'N/A'
+    const customerPhone = shippingInfo.phone || invoice.order?.user?.phone || 'N/A'
     const customerEmail = invoice.order?.user?.email || 'N/A'
-    const shippingAddress = invoice.order?.shippingAddress || 'Nhận tại cửa hàng'
+    const shippingAddress = shippingInfo.address || invoice.order?.shippingAddress || 'Không có dữ liệu từ BE'
 
     const itemsHtml = (invoice.order?.items || []).map((item, idx) => {
       const colorText = item.color ? `Màu: ${item.color}` : ''
       const sizeText = item.size ? `Size: ${item.size}` : ''
       const attrs = [colorText, sizeText].filter(Boolean).join(', ')
-      const subtotal = (item.quantity || 0) * (item.unitPrice || 0)
+      const subtotal = ((item.quantity ?? 0) * (item.unitPrice ?? 0)) - (item.discountAmount ?? 0)
       
       return `
         <tr>
@@ -290,7 +288,8 @@ export const MyOrders = () => {
               <tr>
                 <td>
                   <strong>Khách hàng:</strong> ${customerName}<br>
-                  <strong>Điện thoại:</strong> ${customerPhone}
+                  <strong>Điện thoại:</strong> ${customerPhone}<br>
+                  <strong>Email:</strong> ${customerEmail}
                 </td>
                 <td>
                   <strong>Địa chỉ nhận hàng:</strong><br>
@@ -300,6 +299,18 @@ export const MyOrders = () => {
             </table>
 
             <div class="section-title">Chi tiết thanh toán</div>
+            <table class="info-grid" style="margin-bottom: 20px;">
+              <tr>
+                <td>
+                  <strong>Phương thức:</strong> ${paymentInfo?.paymentMethod || 'Không có dữ liệu từ BE'}<br>
+                  <strong>Trạng thái:</strong> ${paymentInfo?.paymentStatus || 'Không có dữ liệu từ BE'}
+                </td>
+                <td>
+                  <strong>Mã thanh toán:</strong> ${paymentInfo?.paymentId ?? 'Không có dữ liệu từ BE'}<br>
+                  <strong>Số tiền:</strong> ${paymentInfo?.amount != null ? formatVND(paymentInfo.amount) : 'Không có dữ liệu từ BE'}
+                </td>
+              </tr>
+            </table>
             <table class="items-table">
               <thead>
                 <tr>
@@ -318,7 +329,7 @@ export const MyOrders = () => {
             <table class="totals-table">
               <tr class="totals-final">
                 <td style="text-align: left;">Tổng thanh toán:</td>
-                <td style="text-align: right; font-size: 15px;">${formatVND(invoice.totalAmount || 0)}</td>
+                <td style="text-align: right; font-size: 15px;">${formatVND(invoice.totalAmount)}</td>
               </tr>
             </table>
 
@@ -347,10 +358,11 @@ export const MyOrders = () => {
       'Bạn có chắc chắn muốn hủy đơn hàng này?',
       async () => {
         try {
-          await orderApi.cancelOrder(orderId)
+          const res = await orderApi.cancelOrder(orderId)
           toast.success('Hủy đơn hàng thành công!')
-          // Cập nhật lại trạng thái đơn hàng trên UI
-          setOrders(prev => prev.map(o => o.orderId === orderId ? { ...o, status: 'CANCELLED' } : o))
+          if (res?.data) {
+            setOrders(prev => prev.map(order => order.orderId === orderId ? res.data : order))
+          }
         } catch (err) {
           console.error('Error cancelling order:', err)
           toast.error('Không thể hủy đơn hàng này. Vui lòng liên hệ hỗ trợ!')
@@ -364,40 +376,35 @@ export const MyOrders = () => {
     setExpandedOrderId(prev => (prev === orderId ? null : orderId))
   }
 
-  const parseShippingAddress = (str) => {
-    if (!str) return { fullName: 'N/A', phone: 'N/A', address: 'N/A' }
-    const parts = str.split(' | ')
-    let fullName = parts[0] || 'N/A'
-    let phone = 'N/A'
-    let address = 'N/A'
-
-    parts.forEach(part => {
-      if (part.startsWith('SĐT: ')) phone = part.replace('SĐT: ', '')
-      if (part.startsWith('Địa chỉ: ')) address = part.replace('Địa chỉ: ', '')
-    })
-
-    return { fullName, phone, address }
-  }
-
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'PENDING': return 'Chờ duyệt'
+      case 'CREATED': return 'Chờ xử lý'
       case 'CONFIRMED': return 'Đã xác nhận'
       case 'SHIPPING': return 'Đang giao hàng'
       case 'DELIVERED': return 'Đã nhận hàng'
-      case 'CANCELLED': return 'Đã hủy'
+      case 'CANCELED': return 'Đã hủy'
       default: return status
     }
   }
 
   const getStatusColorClass = (status) => {
     switch (status) {
-      case 'PENDING': return 'text-amber-600 bg-amber-50 border-amber-200'
+      case 'CREATED': return 'text-amber-600 bg-amber-50 border-amber-200'
       case 'CONFIRMED': return 'text-blue-600 bg-blue-50 border-blue-200'
       case 'SHIPPING': return 'text-indigo-600 bg-indigo-50 border-indigo-200'
       case 'DELIVERED': return 'text-green-600 bg-green-50 border-green-200'
-      case 'CANCELLED': return 'text-red-500 bg-red-50 border-red-200'
+      case 'CANCELED': return 'text-red-500 bg-red-50 border-red-200'
       default: return 'text-gray-500 bg-gray-50 border-gray-200'
+    }
+  }
+
+  const getPaymentStatusColorClass = (status) => {
+    switch (status) {
+      case 'SUCCESS': return 'bg-green-50 text-green-700 border-green-200'
+      case 'FAILED': return 'bg-red-50 text-red-700 border-red-200'
+      case 'REFUNDED': return 'bg-blue-50 text-blue-700 border-blue-200'
+      case 'PENDING': return 'bg-amber-50 text-amber-700 border-amber-200'
+      default: return 'bg-gray-50 text-gray-600 border-gray-200'
     }
   }
 
@@ -448,7 +455,8 @@ export const MyOrders = () => {
               {orders.map((o) => {
                 const shipInfo = parseShippingAddress(o.shippingAddress)
                 const isExpanded = expandedOrderId === o.orderId
-                const payStatus = paymentStatuses[o.orderId] || 'UNPAID'
+                const paymentInfo = paymentDetails[o.orderId]
+                const payStatus = paymentInfo?.paymentStatus
                 
                 return (
                   <div key={o.orderId} className="bg-white border border-black/10 shadow-sm overflow-hidden transition-all duration-300">
@@ -466,7 +474,7 @@ export const MyOrders = () => {
                           </span>
                         </div>
                         <p className="text-[10px] text-brand-muted uppercase">
-                          Ngày đặt: {o.createdAt ? new Date(o.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                          Ngày đặt: {o.orderDate ? new Date(o.orderDate).toLocaleDateString('vi-VN') : 'N/A'}
                         </p>
                       </div>
 
@@ -497,25 +505,32 @@ export const MyOrders = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-4 border-b border-gray-200">
                           <div className="space-y-1.5 text-brand-charcoal">
                             <h4 className="text-[9px] uppercase font-bold text-brand-muted tracking-wider">Địa chỉ giao nhận</h4>
-                            <p><span className="font-semibold text-brand-muted">Người nhận:</span> {shipInfo.fullName}</p>
-                            <p><span className="font-semibold text-brand-muted">Số điện thoại:</span> {shipInfo.phone}</p>
-                            <p><span className="font-semibold text-brand-muted">Địa chỉ:</span> {shipInfo.address}</p>
+                            <p><span className="font-semibold text-brand-muted">Người nhận:</span> {shipInfo.fullName || 'N/A'}</p>
+                            <p><span className="font-semibold text-brand-muted">Số điện thoại:</span> {shipInfo.phone || 'N/A'}</p>
+                            <p><span className="font-semibold text-brand-muted">Địa chỉ:</span> {shipInfo.address || 'N/A'}</p>
+                            <p><span className="font-semibold text-brand-muted">Phường/Xã:</span> {o.ward || 'BE chưa trả dữ liệu'}</p>
+                            <p><span className="font-semibold text-brand-muted">Quận/Huyện:</span> {o.district || 'BE chưa trả dữ liệu'}</p>
+                            <p><span className="font-semibold text-brand-muted">Tỉnh/Thành:</span> {o.province || 'BE chưa trả dữ liệu'}</p>
                           </div>
                           
                           <div className="space-y-1.5 text-brand-charcoal">
                             <h4 className="text-[9px] uppercase font-bold text-brand-muted tracking-wider">Thông tin thanh toán</h4>
-                            <p><span className="font-semibold text-brand-muted">Phương thức:</span> COD (Tiền mặt khi nhận hàng)</p>
+                            <p>
+                              <span className="font-semibold text-brand-muted">Phương thức:</span>{' '}
+                              {paymentInfo?.paymentMethod || 'Chưa có dữ liệu từ BE'}
+                            </p>
+                            {paymentInfo?.paymentId != null && (
+                              <p><span className="font-semibold text-brand-muted">Mã thanh toán:</span> {paymentInfo.paymentId}</p>
+                            )}
+                            {paymentInfo?.amount != null && (
+                              <p><span className="font-semibold text-brand-muted">Số tiền:</span> {formatVND(paymentInfo.amount)}</p>
+                            )}
                             <p className="flex items-center gap-1.5">
                               <span className="font-semibold text-brand-muted">Giao dịch:</span>
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${
-                                payStatus === 'SUCCESS' || payStatus === 'PAID'
-                                  ? 'bg-green-50 text-green-700 border-green-200' 
-                                  : 'bg-amber-50 text-amber-700 border-amber-200'
-                              }`}>
-                                {payStatus === 'SUCCESS' || payStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${getPaymentStatusColorClass(payStatus)}`}>
+                                {payStatus || 'Chưa có dữ liệu từ BE'}
                               </span>
                             </p>
-                            {o.note && <p><span className="font-semibold text-brand-muted">Ghi chú:</span> {o.note}</p>}
                           </div>
                         </div>
 
@@ -540,6 +555,29 @@ export const MyOrders = () => {
                           </div>
                         </div>
 
+                        <div className="flex justify-end border-t border-gray-200 pt-4">
+                          <div className="w-full sm:w-72 space-y-1.5 text-right">
+                            <p className="flex justify-between">
+                              <span className="text-brand-muted">Tạm tính:</span>
+                              <span>{formatVND(o.subtotalAmount)}</span>
+                            </p>
+                            {Number(o.discountValue || 0) > 0 && (
+                              <p className="flex justify-between text-green-700">
+                                <span>Giảm giá{o.couponCode ? ` (${o.couponCode})` : ''}:</span>
+                                <span>-{formatVND(o.discountValue)}</span>
+                              </p>
+                            )}
+                            <p className="flex justify-between">
+                              <span className="text-brand-muted">Phí vận chuyển:</span>
+                              <span>{formatVND(o.shippingFee)}</span>
+                            </p>
+                            <p className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5">
+                              <span>Tổng thanh toán:</span>
+                              <span>{formatVND(o.totalAmount)}</span>
+                            </p>
+                          </div>
+                        </div>
+
                         {/* Order footer actions */}
                         <div className="flex justify-between items-center pt-2">
                           <div>
@@ -547,7 +585,7 @@ export const MyOrders = () => {
                               const matchingInvoice = myInvoices.find(inv => inv.order?.orderId === o.orderId)
                               return (
                                 <div className="flex gap-2">
-                                  {o.status === 'PENDING' && (
+                                  {(o.status === 'CREATED' || o.status === 'CONFIRMED') && (
                                     <button
                                       onClick={() => handleCancelMyOrder(o.orderId)}
                                       className="border border-red-500 text-red-500 text-[10px] font-semibold tracking-wider uppercase px-4 py-2 hover:bg-red-50 transition-colors rounded-none cursor-pointer"
@@ -557,7 +595,7 @@ export const MyOrders = () => {
                                   )}
                                   {matchingInvoice && (
                                     <button
-                                      onClick={() => handlePrintInvoice(matchingInvoice)}
+                                      onClick={() => handlePrintInvoice(matchingInvoice, paymentInfo)}
                                       className="border border-brand-charcoal text-brand-charcoal text-[10px] font-semibold tracking-wider uppercase px-4 py-2 hover:bg-brand-charcoal hover:text-white transition-all rounded-none cursor-pointer"
                                     >
                                       Xem hóa đơn

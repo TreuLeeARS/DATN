@@ -1,5 +1,3 @@
-import { showAuthToast } from '../../utils/authToast.jsx'
-
 export const HeroText = ({ headline, subline, ctaLabel, ctaHref, headlineRef, sublineRef, ctaRef }) => {
   // Split headline into words for animation
   const words = headline.split(' ')

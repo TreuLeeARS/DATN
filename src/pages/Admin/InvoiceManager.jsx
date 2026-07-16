@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { formatVND } from '../../utils/price.js'
 import toast from 'react-hot-toast'
 import invoiceApi from '../../api/invoiceApi.js'
+import paymentApi from '../../api/paymentApi.js'
+import { parseShippingAddress } from '../../utils/shippingAddress.js'
+import { isStaff } from '../../utils/auth.js'
 
 export const InvoiceManager = () => {
+  const userIsStaff = isStaff()
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
@@ -13,8 +17,11 @@ export const InvoiceManager = () => {
   // Details Modal state
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [paymentDetails, setPaymentDetails] = useState({})
+  const selectedShippingInfo = parseShippingAddress(selectedInvoice?.order?.shippingAddress)
+  const selectedPaymentInfo = paymentDetails[selectedInvoice?.order?.orderId]
 
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
     try {
       setLoading(true)
       const res = await invoiceApi.getInvoices({
@@ -32,18 +39,35 @@ export const InvoiceManager = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page])
 
   useEffect(() => {
     fetchInvoices()
-  }, [page])
+  }, [fetchInvoices])
+
+  const fetchPaymentDetails = async (orderId) => {
+    if (!orderId) return null
+    if (paymentDetails[orderId]) return paymentDetails[orderId]
+
+    try {
+      const res = await paymentApi.getPaymentStatusByOrderId(orderId)
+      if (res?.data) {
+        setPaymentDetails(prev => ({ ...prev, [orderId]: res.data }))
+        return res.data
+      }
+    } catch (error) {
+      console.error(`Error loading payment details for order #${orderId}:`, error)
+    }
+    return null
+  }
 
   const handleOpenDetails = (invoice) => {
     setSelectedInvoice(invoice)
     setIsModalOpen(true)
+    fetchPaymentDetails(invoice.order?.orderId)
   }
 
-  const handlePrint = (invoice) => {
+  const handlePrint = async (invoice) => {
     if (!invoice) return
 
     const printWindow = window.open('', '_blank')
@@ -52,6 +76,8 @@ export const InvoiceManager = () => {
       return
     }
 
+    const paymentInfo = await fetchPaymentDetails(invoice.order?.orderId)
+
     const dateStr = invoice.invoiceDate
       ? new Date(invoice.invoiceDate).toLocaleString('vi-VN')
       : 'N/A'
@@ -59,20 +85,21 @@ export const InvoiceManager = () => {
       ? new Date(invoice.order.orderDate).toLocaleString('vi-VN')
       : 'N/A'
 
-    const customerName = invoice.order?.user
+    const shippingInfo = parseShippingAddress(invoice.order?.shippingAddress)
+    const customerName = shippingInfo.fullName || (invoice.order?.user
       ? `${invoice.order.user.lastName || ''} ${invoice.order.user.firstName || ''}`.trim() || invoice.order.user.username
-      : 'Khách vãng lai'
+      : 'Khách vãng lai')
     
-    const customerPhone = invoice.order?.user?.phone || 'Chưa cập nhật'
+    const customerPhone = shippingInfo.phone || invoice.order?.user?.phone || 'Chưa cập nhật'
     const customerEmail = invoice.order?.user?.email || 'Chưa cập nhật'
-    const shippingAddress = invoice.order?.shippingAddress || 'Nhận tại cửa hàng'
+    const shippingAddress = shippingInfo.address || invoice.order?.shippingAddress || 'Không có dữ liệu từ BE'
 
     // Format list of items
     const itemsHtml = (invoice.order?.items || []).map((item, idx) => {
       const colorText = item.color ? `Màu: ${item.color}` : ''
       const sizeText = item.size ? `Size: ${item.size}` : ''
       const attrs = [colorText, sizeText].filter(Boolean).join(', ')
-      const subtotal = (item.quantity || 0) * (item.unitPrice || 0)
+      const subtotal = ((item.quantity ?? 0) * (item.unitPrice ?? 0)) - (item.discountAmount ?? 0)
       
       return `
         <tr>
@@ -262,6 +289,24 @@ export const InvoiceManager = () => {
               </tr>
             </table>
 
+            <div class="section-title">Thông tin thanh toán</div>
+            <table class="info-grid">
+              <tr>
+                <td>
+                  <span class="info-label">Phương thức:</span><br>
+                  ${paymentInfo?.paymentMethod || 'Không có dữ liệu từ BE'}
+                </td>
+                <td>
+                  <span class="info-label">Trạng thái:</span><br>
+                  ${paymentInfo?.paymentStatus || 'Không có dữ liệu từ BE'}
+                </td>
+                <td>
+                  <span class="info-label">Mã thanh toán:</span><br>
+                  ${paymentInfo?.paymentId ?? 'Không có dữ liệu từ BE'}
+                </td>
+              </tr>
+            </table>
+
             <div class="section-title">Chi tiết mặt hàng thanh toán</div>
             <table class="items-table">
               <thead>
@@ -279,17 +324,9 @@ export const InvoiceManager = () => {
             </table>
 
             <table class="totals-table">
-              <tr>
-                <td class="totals-label">Tổng cộng tiền hàng:</td>
-                <td class="totals-value">${formatVND(invoice.order?.totalAmount || invoice.totalAmount || 0)}</td>
-              </tr>
-              <tr>
-                <td class="totals-label">Thuế GTGT (VAT):</td>
-                <td class="totals-value">Đã bao gồm (0%)</td>
-              </tr>
               <tr class="totals-final">
                 <td class="totals-label" style="font-weight: bold;">Tổng tiền thanh toán:</td>
-                <td class="totals-value" style="font-weight: bold; font-size: 15px;">${formatVND(invoice.totalAmount || 0)}</td>
+                <td class="totals-value" style="font-weight: bold; font-size: 15px;">${formatVND(invoice.totalAmount)}</td>
               </tr>
             </table>
 
@@ -320,7 +357,7 @@ export const InvoiceManager = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 border border-black/10 shadow-sm">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-widest text-brand-charcoal">
-            Quản lý hóa đơn (Invoices)
+            {userIsStaff ? 'Tra cứu hóa đơn (Invoices)' : 'Quản lý hóa đơn (Invoices)'}
           </h2>
           <p className="text-[10px] text-brand-muted tracking-wider uppercase mt-1">
             Tổng số hóa đơn đã xuất: <span className="font-bold text-brand-charcoal">{totalElements}</span>
@@ -476,10 +513,35 @@ export const InvoiceManager = () => {
                     {selectedInvoice.order?.orderDate ? new Date(selectedInvoice.order.orderDate).toLocaleString('vi-VN') : 'N/A'}
                   </p>
                   <p>
+                    <span className="font-semibold text-brand-muted">Người nhận:</span>{' '}
+                    <span className="font-medium text-brand-charcoal">{selectedShippingInfo.fullName || 'N/A'}</span>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-brand-muted">SĐT nhận hàng:</span>{' '}
+                    <span className="font-medium text-brand-charcoal">{selectedShippingInfo.phone || 'N/A'}</span>
+                  </p>
+                  <p>
                     <span className="font-semibold text-brand-muted">Địa chỉ nhận hàng:</span>{' '}
-                    <span className="font-medium text-brand-charcoal">{selectedInvoice.order?.shippingAddress || 'Nhận tại cửa hàng'}</span>
+                    <span className="font-medium text-brand-charcoal">
+                      {selectedShippingInfo.address || selectedInvoice.order?.shippingAddress || 'Không có dữ liệu từ BE'}
+                    </span>
                   </p>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 border border-black/5">
+                <p>
+                  <span className="font-semibold text-brand-muted">Phương thức:</span>{' '}
+                  {selectedPaymentInfo?.paymentMethod || 'Không có dữ liệu từ BE'}
+                </p>
+                <p>
+                  <span className="font-semibold text-brand-muted">Trạng thái thanh toán:</span>{' '}
+                  {selectedPaymentInfo?.paymentStatus || 'Không có dữ liệu từ BE'}
+                </p>
+                <p>
+                  <span className="font-semibold text-brand-muted">Mã thanh toán:</span>{' '}
+                  {selectedPaymentInfo?.paymentId ?? 'Không có dữ liệu từ BE'}
+                </p>
               </div>
 
               {/* Items List Table */}
@@ -500,7 +562,7 @@ export const InvoiceManager = () => {
                     </thead>
                     <tbody>
                       {(selectedInvoice.order?.items || []).map((item, idx) => {
-                        const subtotal = (item.quantity || 0) * (item.unitPrice || 0)
+                        const subtotal = ((item.quantity ?? 0) * (item.unitPrice ?? 0)) - (item.discountAmount ?? 0)
                         return (
                           <tr key={item.orderItemId || idx} className="border-b border-gray-100 last:border-0">
                             <td className="py-3 px-4 text-center font-medium text-brand-muted">
@@ -538,13 +600,9 @@ export const InvoiceManager = () => {
               {/* Invoice Totals */}
               <div className="flex justify-end pt-2">
                 <div className="w-80 space-y-2 border-t border-gray-100 pt-3">
-                  <div className="flex justify-between font-medium">
-                    <span className="text-brand-muted">Tổng tiền hàng:</span>
-                    <span>{formatVND(selectedInvoice.order?.totalAmount || selectedInvoice.totalAmount || 0)}</span>
-                  </div>
                   <div className="flex justify-between font-bold text-sm border-t border-brand-charcoal/10 pt-2 text-brand-charcoal">
                     <span>Tổng cộng hóa đơn:</span>
-                    <span>{formatVND(selectedInvoice.totalAmount || 0)}</span>
+                    <span>{formatVND(selectedInvoice.totalAmount)}</span>
                   </div>
                 </div>
               </div>

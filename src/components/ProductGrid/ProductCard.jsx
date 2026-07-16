@@ -32,14 +32,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
   const timelineRef = useRef(null)
 
   const [detailedProduct, setDetailedProduct] = useState(null)
-  const [loadingDetail, setLoadingDetail] = useState(false)
   const [brokenImages, setBrokenImages] = useState({})
-
-  useEffect(() => {
-    if (isModalOpen) {
-      setBrokenImages({})
-    }
-  }, [isModalOpen])
 
   useEffect(() => {
     let isMounted = true
@@ -53,7 +46,6 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
       if (!productId || isNaN(productId)) return
 
       try {
-        setLoadingDetail(true)
         const res = await productApi.getProductDetail(Number(productId))
         if (res && res.data && isMounted) {
           const mapped = mapDbProduct(res.data)
@@ -61,8 +53,6 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
         }
       } catch (err) {
         console.error('Error loading product details in card:', err)
-      } finally {
-        if (isMounted) setLoadingDetail(false)
       }
     }
     fetchDetail()
@@ -109,6 +99,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
     : 0
 
   const isOutOfStock = (() => {
+    if (!product.variants?.length) return true;
     if (selectedColor === null || !selectedSize) return false;
     const selColorName = product.colors[selectedColor]?.name;
     const variant = product.variants?.find(
@@ -125,6 +116,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => {
+          setBrokenImages({})
           setActiveImageIndex(0)
           setSelectedColor(null)
           setSelectedSize(null)
@@ -161,6 +153,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
             <button
               onClick={(e) => {
                 e.stopPropagation()
+                setBrokenImages({})
                 setActiveImageIndex(0)
                 setSelectedColor(null)
                 setSelectedSize(null)
@@ -174,6 +167,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
             <button
               onClick={(e) => {
                 e.stopPropagation()
+                setBrokenImages({})
                 setActiveImageIndex(0)
                 setSelectedColor(null)
                 setSelectedSize(null)

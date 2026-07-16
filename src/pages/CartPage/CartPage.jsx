@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useRef, useEffect, useCallback } from 'react'
+import { useState, useLayoutEffect, useRef, useEffect } from 'react'
 import { formatVND } from '../../utils/price.js'
 import { Link, useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
@@ -9,16 +9,23 @@ import { useCartContext } from '../../context/CartContext.jsx'
 import orderApi from '../../api/orderApi.js'
 import couponApi from '../../api/couponApi.js'
 import paymentApi from '../../api/paymentApi.js'
+import shippingFeeApi from '../../api/shippingFeeApi.js'
 import { AddressSelector } from '../../components/AddressSelector/AddressSelector.jsx'
+import { formatShippingAddress, parseShippingAddress } from '../../utils/shippingAddress.js'
 
 export const CartPage = () => {
   const navigate = useNavigate()
-  const { cartItems, removeItem, updateQuantity, clearCart, refreshCart, total } = useCartContext()
-
-  const [selectedItemIds, setSelectedItemIds] = useState([])
+  const { cartItems, removeItem, updateQuantity, refreshCart, total } = useCartContext()
+  const hasCartItems = cartItems.length > 0
   const [dbCoupon, setDbCoupon] = useState(null)
   const [promoInput, setPromoInput] = useState('')
   const [promoLoading, setPromoLoading] = useState(false)
+  const [paymentMethods, setPaymentMethods] = useState([])
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true)
+  const [paymentMethodsError, setPaymentMethodsError] = useState('')
+  const [shippingQuote, setShippingQuote] = useState(null)
+  const [shippingFeeLoading, setShippingFeeLoading] = useState(false)
+  const [shippingFeeError, setShippingFeeError] = useState('')
 
   // Tải thông tin coupon thực tế từ cơ sở dữ liệu nếu có mã giảm giá được áp dụng
   useEffect(() => {
@@ -55,68 +62,15 @@ export const CartPage = () => {
     }
   }, [navigate])
 
-  // Kiểm tra và khởi tạo sản phẩm được chọn thanh toán khi click "Mua Ngay"
-  useEffect(() => {
-    const checkoutOnlyName = sessionStorage.getItem('checkoutOnlyName')
-    const checkoutOnlySize = sessionStorage.getItem('checkoutOnlySize')
-    const checkoutOnlyColor = sessionStorage.getItem('checkoutOnlyColor')
-    const checkoutOnlyProductId = sessionStorage.getItem('checkoutOnlyProductId')
-
-    if (checkoutOnlyName) {
-      const matched = cartItems.find(item => 
-        item.name.toLowerCase() === checkoutOnlyName.toLowerCase() &&
-        String(item.selectedSize).toUpperCase() === String(checkoutOnlySize || 'S').toUpperCase() &&
-        (checkoutOnlyColor ? String(item.selectedColor).toLowerCase() === String(checkoutOnlyColor).toLowerCase() : true)
-      )
-      if (matched) {
-        setSelectedItemIds([matched.id])
-        sessionStorage.removeItem('checkoutOnlyName')
-        sessionStorage.removeItem('checkoutOnlySize')
-        sessionStorage.removeItem('checkoutOnlyColor')
-        sessionStorage.removeItem('checkoutOnlyProductId')
-        
-        // Cuộn mượt mà đến form điền thông tin đặt hàng
-        setTimeout(() => {
-          const el = document.getElementById('checkout-section')
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }
-        }, 150)
-      }
-    } else if (checkoutOnlyProductId) {
-      // Fallback cho giỏ hàng local cũ
-      const matched = cartItems.find(item => String(item.id).split('-')[0] === String(checkoutOnlyProductId))
-      if (matched) {
-        setSelectedItemIds([matched.id])
-        sessionStorage.removeItem('checkoutOnlyProductId')
-        setTimeout(() => {
-          const el = document.getElementById('checkout-section')
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }
-        }, 150)
-      }
-    }
-  }, [cartItems])
-
-  const handleToggleSelectItem = (id) => {
-    setSelectedItemIds(prev =>
-      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
-    )
-  }
-
-  const handleToggleSelectAll = () => {
-    setSelectedItemIds(prev =>
-      prev.length === cartItems.length ? [] : cartItems.map(item => item.id)
-    )
-  }
-
   // State thông tin nhận hàng
   const [form, setForm] = useState({
     fullName: '',
     phone: '',
     address: '',
-    paymentMethod: 'cod', // 'cod' | 'bank'
+    province: '',
+    district: '',
+    ward: '',
+    paymentMethod: '',
   })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -127,6 +81,37 @@ export const CartPage = () => {
   const isSubmittingRef = useRef(false)
 
   const pageRef = useRef(null)
+
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      try {
+        setPaymentMethodsLoading(true)
+        setPaymentMethodsError('')
+        const res = await paymentApi.getPaymentMethods()
+        const activeMethods = Array.isArray(res?.data)
+          ? res.data.filter(method => method?.isActive !== false)
+          : []
+
+        setPaymentMethods(activeMethods)
+        setForm(prev => {
+          const currentMethodStillExists = activeMethods.some(method => method.code === prev.paymentMethod)
+          const firstSupportedMethod = activeMethods.find(method => ['COD', 'MOMO'].includes(method.code))
+          return {
+            ...prev,
+            paymentMethod: currentMethodStillExists ? prev.paymentMethod : firstSupportedMethod?.code || '',
+          }
+        })
+      } catch (error) {
+        console.error('Error fetching payment methods:', error)
+        setPaymentMethods([])
+        setPaymentMethodsError('Không thể tải phương thức thanh toán từ máy chủ.')
+      } finally {
+        setPaymentMethodsLoading(false)
+      }
+    }
+
+    fetchPaymentMethods()
+  }, [])
 
   // GSAP animation cho trang giỏ hàng
   useLayoutEffect(() => {
@@ -165,21 +150,37 @@ export const CartPage = () => {
 
     if (!form.address.trim()) {
       newErrors.address = 'Vui lòng nhập địa chỉ giao hàng chi tiết'
+    } else if (!form.province || !form.district || !form.ward) {
+      newErrors.address = 'Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện và Phường/Xã'
+    }
+
+    if (!form.paymentMethod) {
+      newErrors.paymentMethod = 'Vui lòng chọn phương thức thanh toán do hệ thống cung cấp'
     }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const selectedItems = cartItems.filter(item => selectedItemIds.includes(item.id))
-  const selectedTotal = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const selectedTotal = total
+
+  const isCouponUsable = (coupon) => {
+    if (!coupon || coupon.deleted) return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const startDate = coupon.startDate ? new Date(coupon.startDate) : null
+    const endDate = coupon.endDate ? new Date(coupon.endDate) : null
+    const withinDate = (!startDate || startDate <= today) && (!endDate || endDate >= today)
+    const withinUsage = coupon.maxUsage == null || Number(coupon.currentUsage || 0) < Number(coupon.maxUsage)
+    return withinDate && withinUsage
+  }
 
   const handleApplyPromo = async () => {
     if (!promoInput.trim()) {
       toast.error('Vui lòng nhập mã giảm giá!')
       return
     }
-    if (selectedItemIds.length === 0) {
+    if (!hasCartItems) {
       toast.error('Vui lòng chọn ít nhất một sản phẩm để áp dụng mã giảm giá!')
       return
     }
@@ -190,7 +191,7 @@ export const CartPage = () => {
         const found = res.data.content.find(
           c => c.couponCode.toLowerCase().trim() === promoInput.toLowerCase().trim()
         )
-        if (found) {
+        if (found && isCouponUsable(found)) {
           if (selectedTotal >= found.minimumOrderAmount) {
             sessionStorage.setItem('appliedPromoCode', found.couponCode)
             setDbCoupon(found)
@@ -230,15 +231,50 @@ export const CartPage = () => {
         return 0 // Chưa đạt giá trị đơn hàng tối thiểu
       }
     }
-    // Fallback tính ước tính 15% tạm thời khi đang tải dữ liệu coupon
-    return Math.round(selectedTotal * 0.15)
+    return 0
   })()
 
-  // CRIT-06 FIX: Phí vận chuyển ước tính — server sẽ quyết định giá trị cuối cùng
-  const estimatedShippingFee = selectedTotal >= 1000000 ? 0 : 30000
-  const estimatedTotal = Math.max(0, selectedTotal - estimatedDiscount + estimatedShippingFee)
+  const estimatedSubtotal = Math.max(0, selectedTotal - estimatedDiscount)
+  const estimatedTotal = estimatedSubtotal + Number(shippingQuote?.shippingFee || 0)
 
-  const handleSubmit = useCallback(async (e) => {
+  useEffect(() => {
+    if (!hasCartItems || !form.address || !form.province) {
+      setShippingQuote(null)
+      setShippingFeeError('')
+      return undefined
+    }
+
+    let cancelled = false
+    const timer = window.setTimeout(async () => {
+      try {
+        setShippingFeeLoading(true)
+        setShippingFeeError('')
+        const res = await shippingFeeApi.calculate({
+          subtotalAmount: estimatedSubtotal,
+          province: form.province,
+          district: form.district,
+          ward: form.ward,
+          shippingAddress: form.address,
+        })
+        if (!cancelled) setShippingQuote(res?.data || null)
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Error calculating shipping fee:', error)
+          setShippingQuote(null)
+          setShippingFeeError(error.response?.data?.message || 'Không thể tính phí vận chuyển từ BE.')
+        }
+      } finally {
+        if (!cancelled) setShippingFeeLoading(false)
+      }
+    }, 350)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [estimatedSubtotal, form.address, form.district, form.province, form.ward, hasCartItems])
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
     // CRIT-03 FIX: Chặn double-submit bằng ref (không bị race condition như state)
@@ -255,12 +291,13 @@ export const CartPage = () => {
     try {
       // Giỏ hàng đã được đồng bộ qua useCart hook, tiến hành checkout trực tiếp
 
-      // CRIT-02 FIX: Gửi danh sách cartItemIds đã chọn thay vì checkout toàn bộ giỏ
       const checkoutData = {
-        cartItemIds: selectedItemIds,
-        shippingAddress: `${form.fullName} | SĐT: ${form.phone} | Địa chỉ: ${form.address}`,
+        shippingAddress: formatShippingAddress(form),
+        province: form.province,
+        district: form.district,
+        ward: form.ward,
         couponCode: appliedPromo || null,
-        paymentMethodType: form.paymentMethod === 'cod' ? 'COD' : 'VNPAY'
+        paymentMethodType: form.paymentMethod
       }
 
       // 1. Tạo đơn hàng trên backend
@@ -268,44 +305,58 @@ export const CartPage = () => {
       
       if (res && res.data) {
         const orderData = res.data
+        const shippingInfo = parseShippingAddress(orderData.shippingAddress)
         
-        // 2. Nếu là COD, thực hiện tạo thanh toán COD tương ứng
-        if (form.paymentMethod === 'cod') {
-          await paymentApi.createCodPayment({
-            orderId: orderData.orderId,
-            amount: orderData.totalAmount
-          })
+        const selectedPaymentMethod = paymentMethods.find(method => method.code === form.paymentMethod)
+        let paymentData = null
+        let codPaymentCreated = true
+        if (form.paymentMethod === 'COD') {
+          try {
+            const paymentRes = await paymentApi.createCodPayment({
+              orderId: orderData.orderId,
+              amount: orderData.totalAmount
+            })
+            paymentData = paymentRes?.data || null
+          } catch (paymentError) {
+            codPaymentCreated = false
+            console.error('Đơn đã tạo nhưng không thể khởi tạo thanh toán COD:', paymentError)
+          }
         }
         
         // Cấu trúc dữ liệu hiển thị — sử dụng totalAmount từ server (source of truth)
         const mappedOrderInfo = {
           orderId: orderData.orderId,
-          fullName: form.fullName,
-          phone: form.phone,
-          address: orderData.shippingAddress,
-          paymentMethod: form.paymentMethod,
-          total: orderData.totalAmount, // Server-authoritative total
-          items: orderData.items?.map(item => ({
-            id: item.productVariantId,
-            name: item.productName,
-            price: item.unitPrice,
-            quantity: item.quantity,
-            selectedSize: item.size,
-            selectedColor: item.color,
-            images: ['https://placehold.co/600x600/faf8f6/a3a3c2?text=No+Image']
-          })) || [],
-          discount: orderData.discountValue || 0,
-          shippingFee: orderData.shippingFee || 0
+          fullName: shippingInfo.fullName || form.fullName,
+          phone: shippingInfo.phone || form.phone,
+          address: shippingInfo.address || form.address,
+          paymentMethod: paymentData?.paymentMethod || selectedPaymentMethod?.name || selectedPaymentMethod?.code,
+          subtotal: orderData.subtotalAmount,
+          discount: orderData.discountValue,
+          shippingFee: orderData.shippingFee,
+          total: orderData.totalAmount,
         }
 
         setOrderInfo(mappedOrderInfo)
-        setOrderSuccess(true)
         
-        // Xóa giỏ hàng local và reload giỏ hàng từ backend
-        await clearCart()
-        setSelectedItemIds([])
+        // BE đã xóa toàn bộ giỏ trong checkout; FE chỉ đồng bộ lại dữ liệu.
+        await refreshCart()
         sessionStorage.removeItem('appliedPromoCode')
-        toast.success('Đặt đơn hàng thành công!')
+
+        if (form.paymentMethod === 'MOMO') {
+          const redirectUrl = orderData.payUrl || orderData.paymentUrl || orderData.deeplink
+          if (redirectUrl) {
+            window.location.assign(redirectUrl)
+            return
+          }
+          setOrderSuccess(true)
+          toast.error(`Đơn #${orderData.orderId} đã được tạo nhưng BE không trả về URL thanh toán MoMo.`)
+        } else if (codPaymentCreated) {
+          setOrderSuccess(true)
+          toast.success('Đặt đơn hàng COD thành công!')
+        } else {
+          setOrderSuccess(true)
+          toast.error(`Đơn #${orderData.orderId} đã được tạo nhưng thanh toán COD chưa khởi tạo. Vui lòng liên hệ hỗ trợ.`)
+        }
       }
     } catch (err) {
       console.error('Lỗi khi thanh toán đơn hàng:', err)
@@ -321,7 +372,7 @@ export const CartPage = () => {
       isSubmittingRef.current = false
       setIsSubmitting(false)
     }
-  }, [selectedItemIds, form, appliedPromo, clearCart, validateForm])
+  }
 
   return (
     <>
@@ -369,35 +420,28 @@ export const CartPage = () => {
                 <div className="flex justify-between">
                   <span className="text-xs text-brand-muted">Phương thức thanh toán:</span>
                   <span className="text-sm font-semibold text-brand-charcoal">
-                    {orderInfo.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản ngân hàng'}
+                    {orderInfo.paymentMethod || 'Chưa có dữ liệu từ BE'}
                   </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-brand-muted">Tạm tính:</span>
+                  <span className="text-sm font-semibold text-brand-charcoal">{formatVND(orderInfo.subtotal)}</span>
+                </div>
+                {Number(orderInfo.discount || 0) > 0 && (
+                  <div className="flex justify-between text-green-700">
+                    <span className="text-xs">Giảm giá:</span>
+                    <span className="text-sm font-semibold">-{formatVND(orderInfo.discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-xs text-brand-muted">Phí vận chuyển:</span>
+                  <span className="text-sm font-semibold text-brand-charcoal">{formatVND(orderInfo.shippingFee)}</span>
                 </div>
                 <div className="flex justify-between border-t border-gray-200/60 pt-3 font-semibold">
                   <span className="text-sm text-brand-charcoal">Tổng cộng:</span>
                   <span className="text-base text-brand-charcoal">{formatVND(orderInfo.total)}</span>
                 </div>
               </div>
-
-              {/* Bank Transfer Guide Box */}
-              {orderInfo.paymentMethod === 'bank' && (
-                <div className="mb-8 p-5 bg-brand-blush/10 rounded-xl border border-brand-blush/40 text-left animate-slide-up">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-5 h-5 text-brand-charcoal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="font-semibold text-brand-charcoal text-sm uppercase tracking-wider">Thông tin chuyển khoản:</span>
-                  </div>
-                  <ul className="text-xs text-brand-charcoal flex flex-col gap-1.5 leading-relaxed">
-                    <li>• Ngân hàng: <span className="font-bold">MB Bank (Ngân hàng Quân đội)</span></li>
-                    <li>• Số tài khoản: <span className="font-bold text-sm tracking-wide text-brand-charcoal">0398123456</span></li>
-                    <li>• Chủ tài khoản: <span className="font-bold">LE MINH TRIEU</span></li>
-                    <li>• Nội dung chuyển khoản: <span className="font-bold text-brand-charcoal bg-white px-2 py-0.5 border border-brand-blush rounded">{orderInfo.orderId}</span></li>
-                  </ul>
-                  <p className="text-[10px] text-brand-muted mt-3 italic">
-                    * Lưu ý: Vui lòng chuyển khoản đúng nội dung và số tiền trên để đơn hàng được duyệt tự động nhanh nhất.
-                  </p>
-                </div>
-              )}
 
               <Link to="/" className="btn-primary inline-block py-3 px-8 rounded-lg text-sm tracking-wider">
                 Tiếp tục mua sắm
@@ -426,7 +470,7 @@ export const CartPage = () => {
             <div className="flex flex-col lg:flex-row gap-8 items-start">
               
               {/* ═══════════ LEFT COLUMN: SHIPPING FORM OR PLACEHOLDER ═══════════ */}
-              {selectedItemIds.length > 0 ? (
+              {hasCartItems ? (
                 <div id="checkout-section" className="w-full lg:w-3/5 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm cart-anim-item animate-fade-in">
                   <h2 className="font-display text-2xl font-bold text-brand-charcoal mb-6 border-b border-gray-100 pb-4">
                     Thông tin giao hàng
@@ -476,8 +520,14 @@ export const CartPage = () => {
                     {/* Enhanced Location & Address Selector */}
                     <AddressSelector
                       value={form.address}
-                      onAddressChange={(newAddr) => {
-                        setForm(prev => ({ ...prev, address: newAddr }))
+                      onAddressChange={(newAddr, details = {}) => {
+                        setForm(prev => ({
+                          ...prev,
+                          address: newAddr,
+                          province: details.province || '',
+                          district: details.district || '',
+                          ward: details.ward || '',
+                        }))
                         if (errors.address) {
                           setErrors(prev => ({ ...prev, address: '' }))
                         }
@@ -491,57 +541,55 @@ export const CartPage = () => {
                       <label className="block text-xs font-semibold uppercase tracking-wider text-brand-muted mb-3">
                         Phương thức thanh toán
                       </label>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        {/* COD option */}
-                        <label
-                          className={`flex-1 flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
-                            form.paymentMethod === 'cod'
-                              ? 'border-brand-charcoal bg-brand-cream/30 ring-1 ring-brand-charcoal'
-                              : 'border-gray-200 hover:border-brand-charcoal/50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="radio"
-                              name="paymentMethod"
-                              value="cod"
-                              checked={form.paymentMethod === 'cod'}
-                              onChange={handleChange}
-                              className="accent-brand-charcoal w-4 h-4"
-                              disabled={isSubmitting}
-                            />
-                            <div className="text-left">
-                              <p className="text-sm font-semibold text-brand-charcoal">Thanh toán khi nhận hàng (COD)</p>
-                              <p className="text-[11px] text-brand-muted">Trả tiền mặt khi sản phẩm được giao đến nơi</p>
-                            </div>
-                          </div>
-                        </label>
-
-                        {/* Bank option */}
-                        <label
-                          className={`flex-1 flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
-                            form.paymentMethod === 'bank'
-                              ? 'border-brand-charcoal bg-brand-cream/30 ring-1 ring-brand-charcoal'
-                              : 'border-gray-200 hover:border-brand-charcoal/50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="radio"
-                              name="paymentMethod"
-                              value="bank"
-                              checked={form.paymentMethod === 'bank'}
-                              onChange={handleChange}
-                              className="accent-brand-charcoal w-4 h-4"
-                              disabled={isSubmitting}
-                            />
-                            <div className="text-left">
-                              <p className="text-sm font-semibold text-brand-charcoal">Chuyển khoản ngân hàng</p>
-                              <p className="text-[11px] text-brand-muted">Hiển thị thông tin chuyển khoản sau đặt hàng</p>
-                            </div>
-                          </div>
-                        </label>
+                      <div className="flex flex-col gap-3">
+                        {paymentMethodsLoading ? (
+                          <p className="text-xs text-brand-muted">Đang tải phương thức thanh toán từ BE...</p>
+                        ) : paymentMethods.length > 0 ? (
+                          paymentMethods.map(method => {
+                            const hasPaymentFlow = ['COD', 'MOMO'].includes(method.code)
+                            return (
+                              <label
+                                key={method.paymentMethodId || method.code}
+                                className={`flex-1 flex items-center justify-between p-4 border rounded-xl transition-all ${
+                                  form.paymentMethod === method.code
+                                    ? 'border-brand-charcoal bg-brand-cream/30 ring-1 ring-brand-charcoal'
+                                    : 'border-gray-200'
+                                } ${hasPaymentFlow ? 'cursor-pointer hover:border-brand-charcoal/50' : 'cursor-not-allowed opacity-60'}`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="radio"
+                                    name="paymentMethod"
+                                    value={method.code}
+                                    checked={form.paymentMethod === method.code}
+                                    onChange={handleChange}
+                                    className="accent-brand-charcoal w-4 h-4"
+                                    disabled={isSubmitting || !hasPaymentFlow}
+                                  />
+                                  <div className="text-left">
+                                    <p className="text-sm font-semibold text-brand-charcoal">
+                                      {method.name || method.code}
+                                    </p>
+                                    {method.description && (
+                                      <p className="text-[11px] text-brand-muted">{method.description}</p>
+                                    )}
+                                    {!hasPaymentFlow && (
+                                      <p className="text-[10px] text-amber-700 mt-1">BE chưa cung cấp luồng thanh toán cho phương thức này.</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </label>
+                            )
+                          })
+                        ) : (
+                          <p className="text-xs text-red-500">
+                            {paymentMethodsError || 'BE chưa trả về phương thức thanh toán đang hoạt động.'}
+                          </p>
+                        )}
                       </div>
+                      {errors.paymentMethod && (
+                        <p className="text-red-400 text-xs mt-2 animate-slide-up">{errors.paymentMethod}</p>
+                      )}
                     </div>
 
                     {/* Submit checkout Form hidden trigger */}
@@ -577,10 +625,10 @@ export const CartPage = () => {
                       <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-muted cursor-pointer hover:text-brand-charcoal transition-colors">
                         <input
                           type="checkbox"
-                          checked={selectedItemIds.length === cartItems.length}
-                          onChange={handleToggleSelectAll}
+                          checked={cartItems.length > 0}
+                          readOnly
                           className="accent-brand-charcoal w-3.5 h-3.5"
-                          disabled={isSubmitting}
+                          disabled
                         />
                         Chọn tất cả
                       </label>
@@ -594,10 +642,10 @@ export const CartPage = () => {
                         {/* Selection Checkbox */}
                         <input
                           type="checkbox"
-                          checked={selectedItemIds.includes(item.id)}
-                          onChange={() => handleToggleSelectItem(item.id)}
+                          checked
+                          readOnly
                           className="accent-brand-charcoal w-4.5 h-4.5 cursor-pointer rounded border-gray-300 flex-shrink-0"
-                          disabled={isSubmitting}
+                          disabled
                           aria-label={`Chọn sản phẩm ${item.name}`}
                         />
 
@@ -654,10 +702,7 @@ export const CartPage = () => {
                         {/* Remove button */}
                         <button
                           type="button"
-                          onClick={() => {
-                            removeItem(item.id);
-                            setSelectedItemIds(prev => prev.filter(id => id !== item.id));
-                          }}
+                          onClick={() => removeItem(item.id)}
                           className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0 transition-colors"
                           disabled={isSubmitting}
                           title="Xóa sản phẩm"
@@ -708,7 +753,7 @@ export const CartPage = () => {
                         <button
                           type="button"
                           onClick={handleApplyPromo}
-                          disabled={promoLoading || isSubmitting || selectedItemIds.length === 0}
+                          disabled={promoLoading || isSubmitting || !hasCartItems}
                           className="bg-brand-charcoal text-white hover:bg-brand-dark px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                         >
                           {promoLoading ? '...' : 'Áp dụng'}
@@ -734,36 +779,40 @@ export const CartPage = () => {
                     <div className="flex justify-between text-brand-muted">
                       <span>Phí vận chuyển <span className="text-[10px]">(ước tính)</span>:</span>
                       <span className="font-semibold text-brand-charcoal">
-                        {selectedItemIds.length === 0 ? '0 VND' : (estimatedShippingFee === 0 ? 'Miễn phí' : formatVND(estimatedShippingFee))}
+                        {shippingFeeLoading
+                          ? 'Đang tính...'
+                          : shippingQuote
+                            ? formatVND(shippingQuote.shippingFee)
+                            : 'Chọn đủ địa chỉ'}
                       </span>
                     </div>
-                    
-                    {estimatedShippingFee > 0 && selectedTotal > 0 && (
-                      <p className="text-[10px] text-brand-muted italic text-left">
-                        * Mẹo: Mua thêm <span className="font-bold text-brand-charcoal">{formatVND(1000000 - selectedTotal)}</span> nữa để được miễn phí vận chuyển!
-                      </p>
+                    {shippingQuote?.note && (
+                      <p className="text-right text-[10px] text-brand-muted">{shippingQuote.note}</p>
+                    )}
+                    {shippingFeeError && (
+                      <p className="text-right text-[10px] text-red-500">{shippingFeeError}</p>
                     )}
 
                     <div className="border-t border-gray-150 pt-3 flex justify-between font-bold text-base text-brand-charcoal">
                       <span>Tổng cộng <span className="text-[10px] font-normal text-brand-muted">(ước tính)</span>:</span>
-                      <span>{formatVND(selectedItemIds.length === 0 ? 0 : estimatedTotal)}</span>
+                      <span>{formatVND(cartItems.length === 0 ? 0 : estimatedTotal)}</span>
                     </div>
                   </div>
 
                   {/* Submit checkout CTA button */}
                   <button
                     onClick={() => {
-                      if (selectedItemIds.length === 0) {
+                      if (!hasCartItems) {
                         toast.error('Vui lòng chọn ít nhất một sản phẩm để thanh toán!')
                         return
                       }
                       document.getElementById('checkout-form-submit').click()
                     }}
-                    disabled={isSubmitting || selectedItemIds.length === 0}
+                    disabled={isSubmitting || shippingFeeLoading || !hasCartItems}
                     className={`auth-submit-btn w-full py-4 rounded-lg
                                font-semibold uppercase tracking-widest text-sm mt-6
                                transition-all duration-300
-                               ${selectedItemIds.length === 0 
+                               ${!hasCartItems
                                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                  : 'bg-brand-charcoal text-white hover:bg-brand-dark hover:shadow-xl hover:shadow-brand-charcoal/20 active:scale-[0.98]'}
                                disabled:opacity-60`}
@@ -776,9 +825,7 @@ export const CartPage = () => {
                         </svg>
                         Đang tạo đơn hàng...
                       </span>
-                    ) : (
-                      'Xác nhận đặt hàng'
-                    )}
+                    ) : form.paymentMethod === 'MOMO' ? 'Thanh toán với MoMo' : 'Xác nhận đặt hàng'}
                   </button>
                 </div>
               </div>

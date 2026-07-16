@@ -100,11 +100,35 @@ export const AdminLayout = () => {
 
   // Filter menu items dynamically
   const displayedMenuItems = menuItems.filter(item => {
+    if (userIsStaff) {
+      return [
+        '/admin',
+        '/admin/categories',
+        '/admin/products',
+        '/admin/orders',
+        '/admin/invoices',
+        '/admin/users',
+        '/admin/popups',
+      ].includes(item.href)
+    }
     if (item.href === '/admin/action-logs') {
       return userIsAdmin // Only ADMIN role can see Action Logs page
     }
-    return true
+    return userIsAdmin
   })
+
+  const staffMenuLabels = {
+    '/admin/categories': 'Tra cứu danh mục',
+    '/admin/products': 'Tra cứu sản phẩm',
+    '/admin/orders': 'Xử lý đơn hàng',
+    '/admin/invoices': 'Tra cứu hóa đơn',
+    '/admin/users': 'Tra cứu người dùng',
+    '/admin/popups': 'Cập nhật popup gợi ý',
+  }
+
+  const getMenuItemLabel = (item) => (
+    userIsStaff ? staffMenuLabels[item.href] || item.label : item.label
+  )
 
   const handleLogout = async () => {
     try {
@@ -124,14 +148,14 @@ export const AdminLayout = () => {
 
   // Determine page title based on location
   const getPageTitle = () => {
-    if (location.pathname === '/admin') return 'Tổng quan hệ thống'
-    if (location.pathname === '/admin/categories') return 'Quản lý danh mục sản phẩm'
-    if (location.pathname === '/admin/products') return 'Quản lý danh mục sản phẩm và biến thể'
-    if (location.pathname === '/admin/orders') return 'Quản lý đơn đặt hàng toàn hệ thống'
-    if (location.pathname === '/admin/invoices') return 'Quản lý hóa đơn bán hàng'
-    if (location.pathname === '/admin/users') return 'Quản lý tài khoản người dùng'
+    if (location.pathname === '/admin') return userIsStaff ? 'Tổng quan nhân viên' : 'Tổng quan hệ thống'
+    if (location.pathname === '/admin/categories') return userIsStaff ? 'Tra cứu danh mục sản phẩm' : 'Quản lý danh mục sản phẩm'
+    if (location.pathname === '/admin/products') return userIsStaff ? 'Tra cứu sản phẩm và biến thể' : 'Quản lý danh mục sản phẩm và biến thể'
+    if (location.pathname === '/admin/orders') return userIsStaff ? 'Xử lý đơn đặt hàng' : 'Quản lý đơn đặt hàng toàn hệ thống'
+    if (location.pathname === '/admin/invoices') return userIsStaff ? 'Tra cứu hóa đơn bán hàng' : 'Quản lý hóa đơn bán hàng'
+    if (location.pathname === '/admin/users') return userIsStaff ? 'Tra cứu tài khoản người dùng' : 'Quản lý tài khoản người dùng'
     if (location.pathname === '/admin/coupons') return 'Quản lý mã giảm giá (Coupons)'
-    if (location.pathname === '/admin/popups') return 'Quản lý thông báo gợi ý Coupon'
+    if (location.pathname === '/admin/popups') return userIsStaff ? 'Cập nhật thông báo gợi ý Coupon' : 'Quản lý thông báo gợi ý Coupon'
     if (location.pathname === '/admin/action-logs') return 'Nhật ký hoạt động hệ thống'
     return 'Admin Panel'
   }
@@ -166,7 +190,7 @@ export const AdminLayout = () => {
                 onClick={(e) => item.disabled && e.preventDefault()}
               >
                 {item.icon}
-                <span>{item.label}</span>
+                <span>{getMenuItemLabel(item)}</span>
               </Link>
             )
           })}
@@ -251,7 +275,7 @@ export const AdminLayout = () => {
                     }}
                   >
                     {item.icon}
-                    <span>{item.label}</span>
+                    <span>{getMenuItemLabel(item)}</span>
                   </Link>
                 )
               })}
@@ -308,7 +332,7 @@ export const AdminLayout = () => {
                 {getPageTitle()}
               </h1>
               <div className="hidden sm:flex items-center space-x-2 text-xs text-brand-muted mt-0.5">
-                <span>Quản trị</span>
+                <span>{userIsStaff ? 'Nhân viên' : 'Quản trị'}</span>
                 <span>/</span>
                 <span className="text-brand-charcoal font-medium">
                   {location.pathname === '/admin' ? 'Dashboard' :

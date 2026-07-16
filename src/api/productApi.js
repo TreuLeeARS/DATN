@@ -13,7 +13,7 @@ const productApi = {
 
   // Tìm kiếm và lọc sản phẩm
   searchProducts: (params) => {
-    // params: { name, categoryId, minPrice, maxPrice, color, size, page, size }
+    // params: { name, categoryId, minPrice, maxPrice, page, size, sort }
     return axiosClient.get('/products/search', { params });
   },
 
@@ -67,6 +67,17 @@ const productApi = {
   // Admin xóa biến thể sản phẩm
   deleteVariant: (productId, variantId) => {
     return axiosClient.delete(`/products/${productId}/variants/${variantId}`);
+  },
+
+  // BE chỉ quản lý ảnh bằng URL, không có endpoint upload file nhị phân.
+  addImages: (productId, imageUrls) => {
+    return axiosClient.post(`/products/${productId}/images`, { imageUrls });
+  },
+
+  deleteImageByUrl: (productId, imageUrl) => {
+    return axiosClient.delete(`/products/${productId}/images`, {
+      params: { imageUrl },
+    });
   }
 };
 

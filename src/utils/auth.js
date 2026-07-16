@@ -1,20 +1,31 @@
-export const isAdmin = () => {
+const decodeJwtPayload = (token) => {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+
+  const base64Url = parts[1];
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+};
+
+const getRoles = () => {
   const token = localStorage.getItem('accessToken');
-  if (!token) return false;
+  if (!token) return [];
   try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return false;
-    
-    const payload = JSON.parse(atob(parts[1]));
+    const payload = decodeJwtPayload(token);
+    if (!payload) return [];
     const roles = payload.roles || payload.authorities || payload.role || [];
-    
-    return Array.isArray(roles)
-      ? roles.some(r => typeof r === 'string' && r.toUpperCase().includes('ADMIN'))
-      : typeof roles === 'string' && roles.toUpperCase().includes('ADMIN');
-  } catch (e) {
-    return false;
+    return Array.isArray(roles) ? roles : [roles];
+  } catch {
+    return [];
   }
 };
+
+export const isAdmin = () => getRoles().some(
+  role => typeof role === 'string' && role.toUpperCase().includes('ADMIN')
+);
 
 /**
  * Kiểm tra trạng thái đăng nhập dựa trên sự tồn tại của accessToken.
@@ -23,23 +34,11 @@ export const isAdmin = () => {
 export const getIsLoggedIn = () => !!localStorage.getItem('accessToken');
 
 export const isStaff = () => {
-  const token = localStorage.getItem('accessToken');
-  if (!token) return false;
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return false;
-    
-    const payload = JSON.parse(atob(parts[1]));
-    const roles = payload.roles || payload.authorities || payload.role || [];
-    
-    const checkRole = (r) => typeof r === 'string' && (r.toUpperCase().includes('STAFF') || r.toUpperCase().includes('EMPLOYEE'));
-    return Array.isArray(roles)
-      ? roles.some(checkRole)
-      : typeof roles === 'string' && checkRole(roles);
-  } catch (e) {
-    return false;
-  }
+  return getRoles().some(role => {
+    if (typeof role !== 'string') return false;
+    const normalized = role.toUpperCase();
+    return normalized.includes('STAFF') || normalized.includes('EMPLOYEE');
+  });
 };
 
 export const isAdminOrStaff = () => isAdmin() || isStaff();
-

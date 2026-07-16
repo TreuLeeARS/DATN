@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import authApi from '../../api/authApi'
-import { isAdmin } from '../../utils/auth.js'
+import { isAdminOrStaff } from '../../utils/auth.js'
 
 // Auth buttons: profile icon with hover dropdown (desktop) + vertical layout (drawer mobile)
 export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
@@ -57,7 +57,7 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
     }
   }
 
-  const isUserAdmin = isAdmin()
+  const canAccessAdmin = isAdminOrStaff()
 
   // ----------------------------------------------------
   // CASE 1: Render inside Mobile Sidebar Drawer
@@ -70,7 +70,7 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
             <p className="text-[9px] tracking-[0.2em] text-brand-muted uppercase">Tài khoản</p>
             <p className="text-sm font-semibold text-brand-charcoal mt-0.5 truncate">{username}</p>
           </div>
-          {isUserAdmin && (
+          {canAccessAdmin && (
             <Link
               to="/admin"
               onClick={onCloseDrawer}
@@ -147,7 +147,7 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
             <p className="text-xs font-semibold text-brand-charcoal truncate">{username}</p>
           </div>
           
-          {isUserAdmin && (
+          {canAccessAdmin && (
             <Link
               to="/admin"
               className="block px-4 py-2 text-[10px] tracking-wider font-semibold text-brand-charcoal hover:bg-black/[0.03] uppercase transition-colors"

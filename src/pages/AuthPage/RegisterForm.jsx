@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import gsap from 'gsap'
 import { SocialLogin } from './SocialLogin.jsx'
 import authApi from '../../api/authApi'
+import { LegalDocumentModal } from './LegalDocumentModal.jsx'
 
 // ─── SVG Icons ───
 const EyeIcon = () => (
@@ -27,7 +28,7 @@ const CheckIcon = () => (
 const getPasswordStrength = (password) => {
   if (!password) return 0
   let score = 0
-  if (password.length >= 8) score++
+  if (password.length >= 6) score++
   if (/[A-Z]/.test(password)) score++
   if (/[a-z]/.test(password)) score++
   if (/\d/.test(password)) score++
@@ -79,8 +80,8 @@ const PasswordStrength = ({ password }) => {
           {config.label}
         </span>
         <div className="flex gap-3 text-xs text-brand-muted">
-          <span className={password.length >= 8 ? 'text-green-500' : ''}>
-            {password.length >= 8 ? '✓' : '○'} 8+ ký tự
+          <span className={password.length >= 6 ? 'text-green-500' : ''}>
+            {password.length >= 6 ? '✓' : '○'} 6+ ký tự
           </span>
           <span className={/[A-Z]/.test(password) ? 'text-green-500' : ''}>
             {/[A-Z]/.test(password) ? '✓' : '○'} Chữ hoa
@@ -111,6 +112,7 @@ export const RegisterForm = ({ onSwitchTab }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState('')
   const [apiSuccess, setApiSuccess] = useState('')
+  const [legalDocument, setLegalDocument] = useState(null)
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -126,8 +128,11 @@ export const RegisterForm = ({ onSwitchTab }) => {
   const validate = () => {
     const newErrors = {}
 
+    const nameParts = form.name.trim().split(/\s+/).filter(Boolean)
     if (!form.name.trim()) {
       newErrors.name = 'Vui lòng nhập họ và tên'
+    } else if (nameParts.length < 2 || nameParts.some(part => part.length < 2)) {
+      newErrors.name = 'Vui lòng nhập đầy đủ họ và tên, mỗi phần ít nhất 2 ký tự'
     }
 
     if (!form.username.trim()) {
@@ -138,20 +143,22 @@ export const RegisterForm = ({ onSwitchTab }) => {
 
     if (!form.email) {
       newErrors.email = 'Vui lòng nhập email'
+    } else if (form.email.length < 6 || form.email.length > 30) {
+      newErrors.email = 'Email phải từ 6 đến 30 ký tự'
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
       newErrors.email = 'Email không hợp lệ'
     }
 
     if (!form.phone) {
       newErrors.phone = 'Vui lòng nhập số điện thoại'
-    } else if (!/^(0|\+84)[0-9]{9}$/.test(form.phone.replace(/\s/g, ''))) {
+    } else if (!/^(0|\+84)\d{9,10}$/.test(form.phone.replace(/\s/g, ''))) {
       newErrors.phone = 'Số điện thoại không hợp lệ'
     }
 
     if (!form.password) {
       newErrors.password = 'Vui lòng nhập mật khẩu'
-    } else if (form.password.length < 8 || form.password.length > 20) {
-      newErrors.password = 'Mật khẩu phải từ 8 đến 20 ký tự'
+    } else if (form.password.length < 6 || form.password.length > 20) {
+      newErrors.password = 'Mật khẩu phải từ 6 đến 20 ký tự'
     } else if (!/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/.test(form.password)) {
       newErrors.password = 'Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số'
     }
@@ -401,13 +408,17 @@ export const RegisterForm = ({ onSwitchTab }) => {
 
       {/* ─── Terms & Conditions ─── */}
       <div className="auth-form-field mb-8">
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <div className="relative mt-0.5">
+        <div className="flex items-start gap-3 group">
+          <label htmlFor="register-agree-terms" className="relative mt-0.5 shrink-0 cursor-pointer">
             <input
               type="checkbox"
               name="agreeTerms"
+              id="register-agree-terms"
               checked={form.agreeTerms}
               onChange={handleChange}
+              required
+              aria-invalid={Boolean(errors.agreeTerms)}
+              aria-describedby={errors.agreeTerms ? 'register-agree-terms-error' : undefined}
               className="sr-only"
             />
             <div
@@ -423,20 +434,28 @@ export const RegisterForm = ({ onSwitchTab }) => {
                 </span>
               )}
             </div>
-          </div>
+          </label>
           <span className="text-sm text-brand-muted leading-relaxed">
-            Tôi đồng ý với{' '}
-            <a href="#" className="text-brand-charcoal font-medium hover:text-brand-blush transition-colors">
+            <label htmlFor="register-agree-terms" className="cursor-pointer">Tôi đồng ý với</label>{' '}
+            <button
+              type="button"
+              onClick={() => setLegalDocument('terms')}
+              className="font-medium text-brand-charcoal underline decoration-black/20 underline-offset-2 transition-colors hover:text-brand-blush"
+            >
               Điều khoản dịch vụ
-            </a>
+            </button>
             {' '}và{' '}
-            <a href="#" className="text-brand-charcoal font-medium hover:text-brand-blush transition-colors">
+            <button
+              type="button"
+              onClick={() => setLegalDocument('privacy')}
+              className="font-medium text-brand-charcoal underline decoration-black/20 underline-offset-2 transition-colors hover:text-brand-blush"
+            >
               Chính sách bảo mật
-            </a>
+            </button>
           </span>
-        </label>
+        </div>
         {errors.agreeTerms && (
-          <p className="text-red-400 text-xs mt-2 ml-8 animate-slide-up">{errors.agreeTerms}</p>
+          <p id="register-agree-terms-error" className="text-red-400 text-xs mt-2 ml-8 animate-slide-up">{errors.agreeTerms}</p>
         )}
       </div>
 
@@ -444,7 +463,7 @@ export const RegisterForm = ({ onSwitchTab }) => {
       <div className="auth-form-field">
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !form.agreeTerms}
           className="auth-submit-btn w-full bg-brand-charcoal text-white py-4 rounded-lg
                      font-medium uppercase tracking-widest text-sm
                      transition-all duration-300
@@ -489,6 +508,13 @@ export const RegisterForm = ({ onSwitchTab }) => {
           Đăng nhập
         </button>
       </p>
+
+      {legalDocument && (
+        <LegalDocumentModal
+          documentType={legalDocument}
+          onClose={() => setLegalDocument(null)}
+        />
+      )}
     </form>
   )
 }

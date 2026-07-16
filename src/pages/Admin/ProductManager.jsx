@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import productApi from '../../api/productApi'
 import categoryApi from '../../api/categoryApi'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
+import { isAdmin } from '../../utils/auth.js'
 
 const translateColor = (color) => {
   if (!color) return ''
@@ -38,6 +39,7 @@ const getColorDot = (color) => {
 }
 
 export const ProductManager = () => {
+  const canManageProducts = isAdmin()
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -53,7 +55,6 @@ export const ProductManager = () => {
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingVariant, setEditingVariant] = useState(null)
   const [selectedProductForVariants, setSelectedProductForVariants] = useState(null)
-  const [uploadingIndex, setUploadingIndex] = useState(null)
   
   // Selected colors and sizes state for product creation
   const [selectedColors, setSelectedColors] = useState([])
@@ -113,12 +114,9 @@ export const ProductManager = () => {
     }, 300)
 
     return () => clearTimeout(delayDebounceFn)
+    // The request is intentionally keyed by the explicit filter/page values below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize, selectedCategoryFilter, searchQuery])
-
-  // Reset page to 0 when query or category changes
-  useEffect(() => {
-    setPage(0)
-  }, [selectedCategoryFilter, searchQuery])
 
   const fetchCategories = async () => {
     try {
@@ -134,54 +132,26 @@ export const ProductManager = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      let res
+      // Luôn dùng endpoint admin để không làm mất sản phẩm soft-deleted khi lọc.
+      const res = await productApi.getAllProductsForAdmin({
+        page: 0,
+        size: 1000,
+        sort: 'productId,desc'
+      })
 
-      if (selectedCategoryFilter !== '') {
-        // If both category and name filters are active, fetch category products and filter client-side
-        if (searchQuery.trim() !== '') {
-          res = await productApi.getProductsByCategory(Number(selectedCategoryFilter), {
-            page: 0,
-            size: 1000
-          })
-          if (res && res.data) {
-            const filteredContent = (res.data.content || []).filter(p => 
-              p.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
-            )
-            const startIndex = page * pageSize
-            const paginatedContent = filteredContent.slice(startIndex, startIndex + pageSize)
-            
-            setProducts(paginatedContent)
-            setTotalPages(Math.ceil(filteredContent.length / pageSize) || 1)
-            setTotalElements(filteredContent.length)
-            return
-          }
-        } else {
-          // If only category is chosen, use getProductsByCategory API
-          res = await productApi.getProductsByCategory(Number(selectedCategoryFilter), {
-            page: page,
-            size: pageSize
-          })
-        }
-      } else if (searchQuery.trim() !== '') {
-        // If only search query is present, use searchProducts API
-        res = await productApi.searchProducts({
-          name: searchQuery.trim(),
-          page: page,
-          size: pageSize
+      if (res?.data) {
+        const normalizedSearch = searchQuery.trim().toLowerCase()
+        const filtered = (res.data.content || []).filter(product => {
+          const matchesCategory = selectedCategoryFilter === ''
+            || Number(product.categoryId) === Number(selectedCategoryFilter)
+          const matchesName = !normalizedSearch
+            || product.name?.toLowerCase().includes(normalizedSearch)
+          return matchesCategory && matchesName
         })
-      } else {
-        // Default: get all products for admin
-        res = await productApi.getAllProductsForAdmin({
-          page: page,
-          size: pageSize,
-          sort: 'productId,desc'
-        })
-      }
-
-      if (res && res.data) {
-        setProducts(res.data.content || [])
-        setTotalPages(res.data.totalPages || 1)
-        setTotalElements(res.data.totalElements || (res.data.content ? res.data.content.length : 0))
+        const startIndex = page * pageSize
+        setProducts(filtered.slice(startIndex, startIndex + pageSize))
+        setTotalPages(Math.ceil(filtered.length / pageSize) || 1)
+        setTotalElements(filtered.length)
       }
     } catch (err) {
       console.error('Error fetching products:', err)
@@ -194,6 +164,7 @@ export const ProductManager = () => {
   // --- PRODUCT CRUD ACTIONS ---
 
   const handleOpenProductModal = (prod = null) => {
+    if (!canManageProducts) return
     if (prod) {
       setEditingProduct(prod)
       let matchedCatId = prod.categoryId
@@ -247,25 +218,12 @@ export const ProductManager = () => {
     setProductForm(prev => ({ ...prev, imageUrls: newUrls.length ? newUrls : [''] }))
   }
 
-  const handleFileUpload = async (index, file) => {
-    if (!file) return
-    try {
-      setUploadingIndex(index)
-      const res = await productApi.uploadImage(file)
-      if (res && res.data && res.data.url) {
-        handleImageUrlChange(index, res.data.url)
-        toast.success('Tải ảnh lên thành công!')
-      }
-    } catch (err) {
-      console.error('Lỗi khi upload ảnh:', err)
-      toast.error('Lỗi khi tải ảnh lên server!')
-    } finally {
-      setUploadingIndex(null)
-    }
-  }
-
   const handleProductSubmit = async (e) => {
     e.preventDefault()
+    if (!canManageProducts) {
+      toast.error('Bạn không có quyền thay đổi sản phẩm.')
+      return
+    }
     if (!productForm.name.trim()) {
       toast.error('Vui lòng nhập tên sản phẩm')
       return
@@ -278,25 +236,49 @@ export const ProductManager = () => {
       toast.error('Vui lòng chọn danh mục')
       return
     }
+    if (!editingProduct && (selectedColors.length === 0 || selectedSizes.length === 0)) {
+      toast.error('Vui lòng chọn ít nhất một màu và một kích cỡ')
+      return
+    }
 
     const cleanImageUrls = productForm.imageUrls.map(u => u.trim()).filter(Boolean)
 
-    const payload = {
+    const basePayload = {
       name: productForm.name.trim(),
       description: productForm.description.trim(),
       baseprice: Number(productForm.baseprice),
-      categoryId: Number(productForm.categoryId),
-      imageUrls: cleanImageUrls,
-      colors: selectedColors,
-      sizes: selectedSizes
+      categoryId: Number(productForm.categoryId)
     }
 
     try {
       if (editingProduct) {
-        await productApi.updateProduct(editingProduct.productId, payload)
+        await productApi.updateProduct(editingProduct.productId, basePayload)
+
+        const oldUrls = editingProduct.imageUrls || []
+        const removedUrls = oldUrls.filter(url => !cleanImageUrls.includes(url))
+        const addedUrls = cleanImageUrls.filter(url => !oldUrls.includes(url))
+        await Promise.all(
+          removedUrls.map(url => productApi.deleteImageByUrl(editingProduct.productId, url))
+        )
+        if (addedUrls.length > 0) {
+          await productApi.addImages(editingProduct.productId, addedUrls)
+        }
         toast.success('Cập nhật sản phẩm thành công!')
       } else {
-        await productApi.createProduct(payload)
+        const variants = selectedColors.flatMap(color =>
+          selectedSizes.map(size => ({
+            size,
+            color,
+            price: Number(productForm.baseprice),
+            quantityInStock: 0,
+            sku: null
+          }))
+        )
+        await productApi.createProduct({
+          ...basePayload,
+          imageUrls: cleanImageUrls,
+          variants
+        })
         toast.success('Tạo sản phẩm mới và tự động tạo biến thể thành công!')
       }
       setIsProductModalOpen(false)
@@ -308,6 +290,7 @@ export const ProductManager = () => {
   }
 
   const handleDeleteProduct = (productId) => {
+    if (!canManageProducts) return
     openConfirm(
       'Xóa sản phẩm',
       'Bạn có chắc chắn muốn xóa sản phẩm này? Các biến thể liên quan cũng sẽ bị ẩn.',
@@ -337,6 +320,7 @@ export const ProductManager = () => {
   }
 
   const handleRestoreProduct = async (productId) => {
+    if (!canManageProducts) return
     try {
       await productApi.restoreProduct(productId)
       toast.success('Phục hồi sản phẩm thành công!')
@@ -350,8 +334,15 @@ export const ProductManager = () => {
   // --- VARIANT ACTIONS ---
 
   const handleSelectProductVariants = async (product) => {
+    if (!canManageProducts && product.deleted) {
+      setSelectedProductForVariants(null)
+      toast.error('STAFF không có quyền xem chi tiết sản phẩm đã ẩn.')
+      return
+    }
     try {
-      const res = await productApi.getProductDetail(product.productId)
+      const res = canManageProducts
+        ? await productApi.getDetailForAdmin(product.productId)
+        : await productApi.getProductDetail(product.productId)
       if (res && res.data) {
         setSelectedProductForVariants(res.data)
       }
@@ -362,6 +353,7 @@ export const ProductManager = () => {
   }
 
   const handleOpenVariantModal = (variant = null) => {
+    if (!canManageProducts) return
     if (!selectedProductForVariants) return
 
     if (variant) {
@@ -394,6 +386,10 @@ export const ProductManager = () => {
 
   const handleVariantSubmit = async (e) => {
     e.preventDefault()
+    if (!canManageProducts) {
+      toast.error('Bạn không có quyền thay đổi biến thể sản phẩm.')
+      return
+    }
     if (!variantForm.price || Number(variantForm.price) <= 0) {
       toast.error('Giá bán biến thể phải lớn hơn 0')
       return
@@ -403,8 +399,7 @@ export const ProductManager = () => {
       size: variantForm.size,
       color: variantForm.color,
       price: Number(variantForm.price),
-      quantityInStock: Number(variantForm.quantityInStock),
-      sku: variantForm.sku
+      quantityInStock: Number(variantForm.quantityInStock)
     }
 
     try {
@@ -413,7 +408,7 @@ export const ProductManager = () => {
         await productApi.updateVariant(prodId, editingVariant.productVariantId, payload)
         toast.success('Cập nhật biến thể thành công!')
       } else {
-        await productApi.addVariant(prodId, payload)
+        await productApi.addVariant(prodId, { ...payload, sku: variantForm.sku || null })
         toast.success('Thêm biến thể thành công!')
       }
       setIsVariantModalOpen(false)
@@ -425,6 +420,7 @@ export const ProductManager = () => {
   }
 
   const handleDeleteVariant = (variantId) => {
+    if (!canManageProducts) return
     openConfirm(
       'Xóa biến thể',
       'Bạn có chắc chắn muốn xóa biến thể này?',
@@ -469,7 +465,10 @@ export const ProductManager = () => {
               type="text"
               placeholder="Tìm tên sản phẩm..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setPage(0)
+              }}
               className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-charcoal focus:ring-2 focus:ring-brand-charcoal/10 text-xs font-sans placeholder-gray-400 bg-white"
             />
             <span className="absolute left-3 top-2.5 text-xs text-gray-400">🔍</span>
@@ -498,7 +497,10 @@ export const ProductManager = () => {
           {searchQuery.trim() !== '' && (
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
+              onClick={() => {
+                setSearchQuery('')
+                setPage(0)
+              }}
               className="text-xs text-gray-500 hover:text-brand-charcoal font-medium px-2 py-1 underline shrink-0"
             >
               Xóa tìm kiếm
@@ -507,12 +509,14 @@ export const ProductManager = () => {
         </div>
 
         {/* Create Product Button */}
-        <button
-          onClick={() => handleOpenProductModal()}
-          className="bg-brand-charcoal text-white text-xs font-semibold px-4 py-2 rounded-xl hover:bg-black transition-all shadow-sm active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-center"
-        >
-          <span>✨</span> Thêm sản phẩm mới
-        </button>
+        {canManageProducts && (
+          <button
+            onClick={() => handleOpenProductModal()}
+            className="bg-brand-charcoal text-white text-xs font-semibold px-4 py-2 rounded-xl hover:bg-black transition-all shadow-sm active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-center"
+          >
+            <span>✨</span> Thêm sản phẩm mới
+          </button>
+        )}
       </div>
 
       {/* ─── MAIN BALANCED 2-COLUMN GRID (7:5 PROPORTION) ─── */}
@@ -603,27 +607,33 @@ export const ProductManager = () => {
                           )}
                         </td>
                         <td className="py-2.5 px-3.5 text-right space-x-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => handleOpenProductModal(p)}
-                            className="text-[11px] font-semibold text-brand-charcoal hover:underline"
-                          >
-                            Sửa
-                          </button>
-                          <span className="text-gray-300">|</span>
-                          {p.deleted ? (
-                            <button
-                              onClick={() => handleRestoreProduct(p.productId)}
-                              className="text-[11px] font-semibold text-emerald-700 hover:underline"
-                            >
-                              Hiện
-                            </button>
+                          {canManageProducts ? (
+                            <>
+                              <button
+                                onClick={() => handleOpenProductModal(p)}
+                                className="text-[11px] font-semibold text-brand-charcoal hover:underline"
+                              >
+                                Sửa
+                              </button>
+                              <span className="text-gray-300">|</span>
+                              {p.deleted ? (
+                                <button
+                                  onClick={() => handleRestoreProduct(p.productId)}
+                                  className="text-[11px] font-semibold text-emerald-700 hover:underline"
+                                >
+                                  Hiện
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleDeleteProduct(p.productId)}
+                                  className="text-[11px] font-semibold text-red-600 hover:underline"
+                                >
+                                  Xóa
+                                </button>
+                              )}
+                            </>
                           ) : (
-                            <button
-                              onClick={() => handleDeleteProduct(p.productId)}
-                              className="text-[11px] font-semibold text-red-600 hover:underline"
-                            >
-                              Xóa
-                            </button>
+                            <span className="text-[10px] font-medium text-gray-400">Chỉ xem</span>
                           )}
                         </td>
                       </tr>
@@ -705,12 +715,14 @@ export const ProductManager = () => {
                     Giá niêm yết: <strong className="text-brand-charcoal">{formatVND(selectedProductForVariants.baseprice)}</strong>
                   </p>
                 </div>
-                <button
-                  onClick={() => handleOpenVariantModal()}
-                  className="bg-brand-charcoal hover:bg-black text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl cursor-pointer transition-all shadow-xs active:scale-95 flex items-center gap-1 shrink-0"
-                >
-                  <span>+</span> Thêm biến thể
-                </button>
+                {canManageProducts && (
+                  <button
+                    onClick={() => handleOpenVariantModal()}
+                    className="bg-brand-charcoal hover:bg-black text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl cursor-pointer transition-all shadow-xs active:scale-95 flex items-center gap-1 shrink-0"
+                  >
+                    <span>+</span> Thêm biến thể
+                  </button>
+                )}
               </div>
 
               {/* Variants Table */}
@@ -761,19 +773,25 @@ export const ProductManager = () => {
                             </span>
                           </td>
                           <td className="py-2.5 px-2.5 text-right space-x-1.5">
-                            <button
-                              onClick={() => handleOpenVariantModal(v)}
-                              className="text-[10px] font-semibold text-brand-charcoal hover:underline"
-                            >
-                              Sửa
-                            </button>
-                            <span className="text-gray-300">|</span>
-                            <button
-                              onClick={() => handleDeleteVariant(v.productVariantId)}
-                              className="text-[10px] font-semibold text-red-600 hover:underline"
-                            >
-                              Xóa
-                            </button>
+                            {canManageProducts ? (
+                              <>
+                                <button
+                                  onClick={() => handleOpenVariantModal(v)}
+                                  className="text-[10px] font-semibold text-brand-charcoal hover:underline"
+                                >
+                                  Sửa
+                                </button>
+                                <span className="text-gray-300">|</span>
+                                <button
+                                  onClick={() => handleDeleteVariant(v.productVariantId)}
+                                  className="text-[10px] font-semibold text-red-600 hover:underline"
+                                >
+                                  Xóa
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[10px] font-medium text-gray-400">Chỉ xem</span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -797,7 +815,7 @@ export const ProductManager = () => {
       </div>
 
       {/* ─── MODAL: PRODUCT CREATE / UPDATE ─── */}
-      {isProductModalOpen && createPortal(
+      {canManageProducts && isProductModalOpen && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto my-auto">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
@@ -875,6 +893,52 @@ export const ProductManager = () => {
                 />
               </div>
 
+              {!editingProduct && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                  <fieldset>
+                    <legend className="font-semibold uppercase text-brand-muted text-[9px] mb-2">Màu ban đầu *</legend>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Trắng', 'Đen', 'Hồng', 'Be', 'Nâu', 'Xám'].map(color => (
+                        <label key={color} className="flex items-center gap-1 text-[10px] border border-gray-200 rounded-lg px-2 py-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedColors.includes(color)}
+                            onChange={() => setSelectedColors(current =>
+                              current.includes(color)
+                                ? current.filter(item => item !== color)
+                                : [...current, color]
+                            )}
+                          />
+                          {color}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <fieldset>
+                    <legend className="font-semibold uppercase text-brand-muted text-[9px] mb-2">Kích cỡ ban đầu *</legend>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'OS'].map(size => (
+                        <label key={size} className="flex items-center gap-1 text-[10px] border border-gray-200 rounded-lg px-2 py-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedSizes.includes(size)}
+                            onChange={() => setSelectedSizes(current =>
+                              current.includes(size)
+                                ? current.filter(item => item !== size)
+                                : [...current, size]
+                            )}
+                          />
+                          {size}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <p className="sm:col-span-2 text-[9px] text-brand-muted">
+                    Biến thể mới được tạo với tồn kho 0. Hãy cập nhật tồn kho trước khi bán.
+                  </p>
+                </div>
+              )}
+
               {/* Dynamic Image URLs */}
               <div className="space-y-2 pt-2 border-t border-gray-100">
                 <div className="flex justify-between items-center">
@@ -898,15 +962,6 @@ export const ProductManager = () => {
                       placeholder="https://images.unsplash.com/..."
                       className="flex-1 px-2.5 py-1.5 border border-gray-200 rounded-xl focus:outline-none text-[11px] font-sans"
                     />
-                    <label className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-xl cursor-pointer text-[10px] font-medium transition-colors shrink-0">
-                      {uploadingIndex === index ? '⌛' : '📁 Tải lên'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(index, e.target.files[0])}
-                      />
-                    </label>
                     {productForm.imageUrls.length > 1 && (
                       <button
                         type="button"
@@ -942,7 +997,7 @@ export const ProductManager = () => {
       )}
 
       {/* ─── MODAL: VARIANT CREATE / UPDATE ─── */}
-      {isVariantModalOpen && createPortal(
+      {canManageProducts && isVariantModalOpen && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="relative w-full max-w-md bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 space-y-4 my-auto">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">

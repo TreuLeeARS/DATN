@@ -25,7 +25,7 @@ export const AIRecommendations = () => {
     const fetchProducts = async () => {
       try {
         setIsLoading(true)
-        // Lấy 4 sản phẩm cho phần Bán Chạy
+        // BE public chưa có best-seller; hiển thị 4 sản phẩm mới nhất.
         const res = await productApi.getAllProducts({ page: 0, size: 4 })
         if (res && res.data && res.data.content && isMounted) {
           const mapped = res.data.content.map(p => mapDbProduct(p)).filter(Boolean)
@@ -76,7 +76,7 @@ export const AIRecommendations = () => {
     return () => ctx.revert()
   }, [isLoading, products])
 
-  const handleAddToCart = (product) => {
+  const handleAddToCart = async (product) => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
       sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'cart' }))
@@ -84,8 +84,12 @@ export const AIRecommendations = () => {
       showAuthToast('Đăng nhập để thêm sản phẩm vào giỏ hàng.')
       return
     }
-    addItem(product, 1)
-    toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
+    try {
+      await addItem(product, 1)
+      toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Không thể thêm sản phẩm vào giỏ hàng.')
+    }
   }
 
   const handleBuyNow = async (product) => {
@@ -96,12 +100,12 @@ export const AIRecommendations = () => {
       showAuthToast('Đăng nhập để tiến hành mua sắm ngay.')
       return
     }
-    await addItem(product, 1)
-    sessionStorage.setItem('checkoutOnlyName', product.name)
-    sessionStorage.setItem('checkoutOnlySize', product.selectedSize || 'S')
-    sessionStorage.setItem('checkoutOnlyColor', product.selectedColor || '')
-    sessionStorage.setItem('checkoutOnlyProductId', product.id)
-    navigate('/cart')
+    try {
+      await addItem(product, 1)
+      navigate('/cart')
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Không thể mua sản phẩm này lúc này.')
+    }
   }
 
   return (
@@ -116,10 +120,10 @@ export const AIRecommendations = () => {
           className="mb-12 md:mb-16 text-center"
         >
           <h2 className="section-heading mb-4">
-            Sản Phẩm Bán Chạy
+            Sản Phẩm Gợi Ý
           </h2>
           <p className="text-brand-muted text-lg max-w-2xl mx-auto">
-            Những thiết kế thịnh hành và được yêu thích nhất trong tuần qua.
+            Một số thiết kế mới nhất hiện có tại cửa hàng.
           </p>
         </div>
 

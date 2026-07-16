@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import dashboardApi from '../../api/dashboardApi'
+import { isStaff } from '../../utils/auth.js'
 
 export const AdminDashboard = () => {
+  const userIsStaff = isStaff()
   const [summary, setSummary] = useState({
     totalOrders: 0,
     deliveredOrders: 0,
@@ -268,7 +270,9 @@ export const AdminDashboard = () => {
 
       {/* Quick Action Shortcuts */}
       <div className="bg-white p-8 rounded-none border border-black/5 space-y-6">
-        <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-[0.15em]">Lối tắt quản trị nhanh</h3>
+        <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-[0.15em]">
+          {userIsStaff ? 'Lối tắt công việc' : 'Lối tắt quản trị nhanh'}
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link
             to="/admin/categories"
@@ -281,7 +285,9 @@ export const AdminDashboard = () => {
             </div>
             <div>
               <p className="font-semibold text-xs uppercase tracking-wider group-hover:text-black transition-colors">Danh mục sản phẩm</p>
-              <p className="text-[10px] text-brand-muted mt-0.5">Thêm, sửa, xóa danh mục</p>
+              <p className="text-[10px] text-brand-muted mt-0.5">
+                {userIsStaff ? 'Xem và cập nhật danh mục' : 'Thêm, sửa, xóa danh mục'}
+              </p>
             </div>
           </Link>
 

@@ -90,37 +90,11 @@ export const mapDbProduct = (dbProduct) => {
     }
   }
 
-  // Phân chia thương hiệu, chất liệu và dịp mặc định dựa theo ID để giữ nguyên bộ lọc sidebar hoạt động chính xác
-  const brand = ['Routine', 'IVY Moda', 'Yody', 'ASOS', 'SHEIN'][dbProduct.productId % 5];
-  const material = ['Cotton', 'Lụa (Silk)', 'Lanh (Linen)', 'Dạ Tweed', 'Jeans/Denim'][dbProduct.productId % 5];
-  const occasion = ['Đi chơi', 'Đi làm', 'Dự tiệc', 'Công sở'][dbProduct.productId % 4];
-
   // Trích xuất màu sắc và kích cỡ từ variants nếu có (ProductResponse)
-  let colors = [];
-  let sizes = [];
-
-  if (dbProduct.variants && Array.isArray(dbProduct.variants)) {
-    if (dbProduct.variants.length > 0) {
-      // Lấy kích cỡ độc nhất
-      sizes = [...new Set(dbProduct.variants.map(v => v.size).filter(Boolean))];
-      
-      // Lấy màu sắc độc nhất
-      const uniqueColors = [...new Set(dbProduct.variants.map(v => v.color).filter(Boolean))];
-      colors = uniqueColors.map(colorName => mapColor(colorName));
-    } else {
-      // Sản phẩm thực sự không có biến thể nào trong DB
-      colors = [];
-      sizes = [];
-    }
-  } else {
-    // Fallback mặc định cho ProductListResponse để hiển thị ngay trên lưới
-    colors = [
-      { name: 'Beige', hex: '#E8D5B7' },
-      { name: 'Charcoal (Đen Xám)', hex: '#2C2C2C' },
-      { name: 'Trắng', hex: '#FFFFFF' }
-    ];
-    sizes = ['S', 'M', 'L', 'XL'];
-  }
+  const variants = Array.isArray(dbProduct.variants) ? dbProduct.variants : [];
+  const sizes = [...new Set(variants.map(v => v.size).filter(Boolean))];
+  const uniqueColors = [...new Set(variants.map(v => v.color).filter(Boolean))];
+  const colors = uniqueColors.map(colorName => mapColor(colorName));
 
   return {
     id,
@@ -132,15 +106,12 @@ export const mapDbProduct = (dbProduct) => {
     category,
     categoryId: dbProduct.categoryId,
     categoryName: dbProduct.categoryName,
-    tags: dbProduct.description ? dbProduct.description.split(' ').slice(0, 3).map(w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"")) : ['elegant', 'minimalist', 'premium'],
+    tags: dbProduct.description ? dbProduct.description.split(' ').slice(0, 3).map(w => w.replace(/[.,/#!$%^&*;:{}=_`~()-]/g, '')) : [],
     badge,
     colors,
     sizes,
     isAvailable: !dbProduct.deleted,
     description: dbProduct.description || `Sản phẩm ${name} cao cấp mang phong cách thiết kế tối giản, chất liệu bền bỉ và phom dáng chuẩn mực.`,
-    brand,
-    material,
-    occasion,
-    variants: dbProduct.variants || []
+    variants
   };
 };

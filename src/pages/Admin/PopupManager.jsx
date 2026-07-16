@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import popupApi from '../../api/popupApi'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
+import { isAdmin } from '../../utils/auth.js'
 
 export const PopupManager = () => {
+  const canManagePopupLifecycle = isAdmin()
   const [popups, setPopups] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -68,6 +70,7 @@ export const PopupManager = () => {
 
   // Open Create Modal
   const handleOpenCreate = () => {
+    if (!canManagePopupLifecycle) return
     setEditingPopup(null)
     setFormData({
       header: '',
@@ -111,6 +114,10 @@ export const PopupManager = () => {
         await popupApi.updatePopup(editingPopup.id, payload)
         toast.success('Cập nhật thông tin popup thành công!')
       } else {
+        if (!canManagePopupLifecycle) {
+          toast.error('Chỉ quản trị viên được tạo popup mới.')
+          return
+        }
         // Create popup
         await popupApi.createPopup(payload)
         toast.success('Tạo popup gợi ý mới thành công!')
@@ -151,22 +158,26 @@ export const PopupManager = () => {
             Kênh Marketing / Tương tác
           </span>
           <h2 className="font-display text-2xl font-bold text-brand-charcoal mt-2">
-            Quản lý Thông báo Popup Coupon
+            {canManagePopupLifecycle ? 'Quản lý Thông báo Popup Coupon' : 'Cập nhật Thông báo Popup Coupon'}
           </h2>
           <p className="text-xs text-brand-muted mt-1">
-            Thiết lập và quản lý các thông báo popup gợi ý mã giảm giá hiển thị trên trang chủ để thúc đẩy hành vi mua sắm.
+            {canManagePopupLifecycle
+              ? 'Thiết lập và quản lý các thông báo popup gợi ý mã giảm giá hiển thị trên trang chủ để thúc đẩy hành vi mua sắm.'
+              : 'Xem và cập nhật nội dung các popup gợi ý mã giảm giá đang có trên trang chủ.'}
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="bg-brand-charcoal text-white text-xs font-semibold px-5 py-3 rounded-xl hover:bg-brand-dark transition-colors flex items-center gap-2 cursor-pointer shadow-sm tracking-wider uppercase active:scale-[0.98]"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Tạo Popup Gợi Ý
-        </button>
+        {canManagePopupLifecycle && (
+          <button
+            onClick={handleOpenCreate}
+            className="bg-brand-charcoal text-white text-xs font-semibold px-5 py-3 rounded-xl hover:bg-brand-dark transition-colors flex items-center gap-2 cursor-pointer shadow-sm tracking-wider uppercase active:scale-[0.98]"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Tạo Popup Gợi Ý
+          </button>
+        )}
       </div>
 
       {/* Grid of Popup Cards */}
@@ -187,14 +198,18 @@ export const PopupManager = () => {
           </div>
           <h3 className="text-sm font-semibold text-brand-charcoal">Không có popup gợi ý nào</h3>
           <p className="text-xs text-brand-muted max-w-sm mt-1">
-            Hiện tại hệ thống chưa có popup gợi ý mã giảm giá nào được tạo. Hãy tạo mới một popup để bắt đầu thu hút khách hàng.
+            {canManagePopupLifecycle
+              ? 'Hiện tại hệ thống chưa có popup gợi ý mã giảm giá nào được tạo. Hãy tạo mới một popup để bắt đầu thu hút khách hàng.'
+              : 'Hiện tại hệ thống chưa có popup gợi ý mã giảm giá nào để cập nhật.'}
           </p>
-          <button
-            onClick={handleOpenCreate}
-            className="mt-4 bg-brand-cream text-brand-charcoal hover:bg-brand-blush/25 border border-brand-charcoal/10 text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
-          >
-            Tạo popup đầu tiên
-          </button>
+          {canManagePopupLifecycle && (
+            <button
+              onClick={handleOpenCreate}
+              className="mt-4 bg-brand-cream text-brand-charcoal hover:bg-brand-blush/25 border border-brand-charcoal/10 text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors cursor-pointer"
+            >
+              Tạo popup đầu tiên
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -267,15 +282,17 @@ export const PopupManager = () => {
                     </svg>
                     Sửa
                   </button>
-                  <button
-                    onClick={() => handleDelete(popup.id, popup.title)}
-                    className="flex-1 bg-red-500/5 hover:bg-red-500/10 text-red-500 border border-red-500/10 text-xs font-semibold py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Xóa
-                  </button>
+                  {canManagePopupLifecycle && (
+                    <button
+                      onClick={() => handleDelete(popup.id, popup.title)}
+                      className="flex-1 bg-red-500/5 hover:bg-red-500/10 text-red-500 border border-red-500/10 text-xs font-semibold py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Xóa
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -284,7 +301,7 @@ export const PopupManager = () => {
       )}
 
       {/* MODAL: CREATE / EDIT POPUP */}
-      {isModalOpen && (
+      {isModalOpen && (editingPopup || canManagePopupLifecycle) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-charcoal/60 backdrop-blur-sm">
           <div
             className="w-full max-w-lg bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col"

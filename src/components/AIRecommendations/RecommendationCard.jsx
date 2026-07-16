@@ -17,12 +17,6 @@ export const RecommendationCard = ({ product, reason, onAddToCart, onBuyNow }) =
   const timelineRef = useRef(null)
 
   useLayoutEffect(() => {
-    if (isModalOpen) {
-      setBrokenImages({})
-    }
-  }, [isModalOpen])
-
-  useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       timelineRef.current = gsap.timeline({ paused: true })
 
@@ -59,6 +53,7 @@ export const RecommendationCard = ({ product, reason, onAddToCart, onBuyNow }) =
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => {
+          setBrokenImages({})
           setActiveImageIndex(0)
           setSelectedColor(null)
           setSelectedSize(null)
@@ -87,6 +82,7 @@ export const RecommendationCard = ({ product, reason, onAddToCart, onBuyNow }) =
             <button
               onClick={(e) => {
                 e.stopPropagation()
+                setBrokenImages({})
                 setActiveImageIndex(0)
                 setSelectedColor(null)
                 setSelectedSize(null)
@@ -100,6 +96,7 @@ export const RecommendationCard = ({ product, reason, onAddToCart, onBuyNow }) =
             <button
               onClick={(e) => {
                 e.stopPropagation()
+                setBrokenImages({})
                 setActiveImageIndex(0)
                 setSelectedColor(null)
                 setSelectedSize(null)

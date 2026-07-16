@@ -11,7 +11,6 @@ import { showAuthToast } from '../../utils/authToast.jsx'
 import categoryApi from '../../api/categoryApi.js'
 import productApi from '../../api/productApi.js'
 import { mapDbProduct } from '../../utils/productMapper.js'
-import { isAdmin } from '../../utils/auth.js'
 
 // Nhãn danh mục tiếng Việt
 const categoryLabels = {
@@ -26,32 +25,6 @@ const categoryLabels = {
   accessories: 'Phụ kiện',
 }
 
-// Danh sách mã màu thực tế sang tên tiếng Việt
-const colorOptions = [
-  { hex: '#FFFFFF', label: 'Trắng' },
-  { hex: '#2C2C2C', label: 'Charcoal (Đen Xám)' },
-  { hex: '#F2C4CE', label: 'Hồng Blush' },
-  { hex: '#E8D5B7', label: 'Beige' },
-  { hex: '#8B7355', label: 'Nâu Sáng' },
-  { hex: '#5A4A42', label: 'Nâu Đậm' },
-]
-
-const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '35', '36', '37', '38', '39', '40', 'OS']
-
-const brandOptions = ['SHEIN', 'ASOS', 'Yody', 'Routine', 'IVY Moda']
-const materialOptions = [
-  'Cotton',
-  'Lụa (Silk)',
-  'Lanh (Linen)',
-  'Dạ Tweed',
-  'Jeans/Denim',
-  'Voan (Chiffon)',
-  'Thun Gân',
-  'Da Thật',
-  'Da Tổng Hợp',
-]
-const occasionOptions = ['Đi chơi', 'Đi làm', 'Dự tiệc', 'Công sở']
-
 const extractKeywords = (catName) => {
   const catNameLower = catName.toLowerCase().normalize('NFC');
   let rawKeywords = [catNameLower];
@@ -59,7 +32,7 @@ const extractKeywords = (catName) => {
     rawKeywords = [...rawKeywords, ...catNameLower.split('&').map(k => k.trim())];
   }
   if (catNameLower.includes('(')) {
-    rawKeywords = [...rawKeywords, ...catNameLower.split(/[\(\)]/).map(k => k.trim()).filter(Boolean)];
+    rawKeywords = [...rawKeywords, ...catNameLower.split(/[()]/).map(k => k.trim()).filter(Boolean)];
   }
 
   const stopWords = ['áo', 'quần', 'váy', 'đầm', 'set', 'giày', 'túi', 'balo', 'khoác'];
@@ -91,11 +64,9 @@ export const ShopPage = () => {
   const [searchVal, setSearchVal] = useState('') // Local input value for debouncing
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [selectedColor, setSelectedColor] = useState(null)
-  const [selectedSize, setSelectedSize] = useState(null)
   const [maxPrice, setMaxPrice] = useState(2000000)
   const [sortBy, setSortBy] = useState('newest')
-  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+  const viewMode = 'grid'
 
   // BIZ-06 Debounce Effect
   useEffect(() => {
@@ -105,11 +76,6 @@ export const ShopPage = () => {
 
     return () => clearTimeout(delayDebounceFn)
   }, [searchVal])
-
-  // Bộ lọc mở rộng
-  const [selectedBrands, setSelectedBrands] = useState([])
-  const [selectedMaterials, setSelectedMaterials] = useState([])
-  const [selectedOccasions, setSelectedOccasions] = useState([])
 
   const [dbProducts, setDbProducts] = useState([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
@@ -156,7 +122,7 @@ export const ShopPage = () => {
                   ...cat,
                   subcategories: subcategoriesWithParent
                 }
-              } catch (err) {
+              } catch {
                 return { ...cat, subcategories: [] }
               }
             })
@@ -180,9 +146,8 @@ export const ShopPage = () => {
       categoryParam = categoryParam.replace(/\+/g, ' ')
       
       if (dbCategories.length > 0) {
-        let found = null
         // Tìm ở cấp root
-        found = dbCategories.find(cat => cat.name.toLowerCase().normalize('NFC') === categoryParam.toLowerCase().normalize('NFC'))
+        let found = dbCategories.find(cat => cat.name.toLowerCase().normalize('NFC') === categoryParam.toLowerCase().normalize('NFC'))
         if (!found) {
           // Tìm ở cấp sub
           for (const root of dbCategories) {
@@ -289,35 +254,10 @@ export const ShopPage = () => {
       }
     }
 
-    // 3. Color
-    if (selectedColor) {
-      result = result.filter(p => p.colors.some(c => c.hex === selectedColor))
-    }
-
-    // 4. Size
-    if (selectedSize) {
-      result = result.filter(p => p.sizes.includes(selectedSize))
-    }
-
-    // 5. Price
+    // 3. Price
     result = result.filter(p => p.price <= maxPrice)
 
-    // 6. Brand
-    if (selectedBrands.length > 0) {
-      result = result.filter(p => p.brand && selectedBrands.includes(p.brand))
-    }
-
-    // 7. Material
-    if (selectedMaterials.length > 0) {
-      result = result.filter(p => p.material && selectedMaterials.includes(p.material))
-    }
-
-    // 8. Occasion
-    if (selectedOccasions.length > 0) {
-      result = result.filter(p => p.occasion && selectedOccasions.includes(p.occasion))
-    }
-
-    // 9. Sorting
+    // 4. Sorting
     if (sortBy === 'newest') {
       result.sort((a, b) => b.id.localeCompare(a.id))
     } else if (sortBy === 'price-asc') {
@@ -329,7 +269,7 @@ export const ShopPage = () => {
     }
 
     return result
-  }, [dbProducts, searchQuery, selectedCategory, selectedColor, selectedSize, maxPrice, sortBy, selectedBrands, selectedMaterials, selectedOccasions, searchParams])
+  }, [dbProducts, searchQuery, selectedCategory, maxPrice, sortBy, searchParams])
 
   // GSAP animation khi danh sách sản phẩm thay đổi
   useLayoutEffect(() => {
@@ -345,9 +285,9 @@ export const ShopPage = () => {
     }, gridRef)
 
     return () => ctx.revert()
-  }, [filteredProducts, viewMode])
+  }, [filteredProducts])
 
-  const handleAddToCart = (product) => {
+  const handleAddToCart = async (product) => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
       sessionStorage.setItem('pendingPurchase', JSON.stringify({ product, action: 'cart' }))
@@ -355,8 +295,12 @@ export const ShopPage = () => {
       showAuthToast('Đăng nhập để thêm sản phẩm vào giỏ hàng.')
       return
     }
-    addItem(product, 1)
-    toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
+    try {
+      await addItem(product, 1)
+      toast.success(`Đã thêm "${product.name}" vào giỏ hàng!`)
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Không thể thêm sản phẩm vào giỏ hàng.')
+    }
   }
 
   const handleBuyNow = async (product) => {
@@ -367,44 +311,21 @@ export const ShopPage = () => {
       showAuthToast('Đăng nhập để tiến hành mua sắm ngay.')
       return
     }
-    await addItem(product, 1)
-    sessionStorage.setItem('checkoutOnlyName', product.name)
-    sessionStorage.setItem('checkoutOnlySize', product.selectedSize || 'S')
-    sessionStorage.setItem('checkoutOnlyColor', product.selectedColor || '')
-    sessionStorage.setItem('checkoutOnlyProductId', product.id)
-    navigate('/cart')
+    try {
+      await addItem(product, 1)
+      navigate('/cart')
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Không thể mua sản phẩm này lúc này.')
+    }
   }
 
   const handleClearFilters = () => {
     setSearchVal('')
     setSearchQuery('')
     setSelectedCategory('all')
-    setSelectedColor(null)
-    setSelectedSize(null)
     setMaxPrice(2000000)
     setSortBy('newest')
-    setSelectedBrands([])
-    setSelectedMaterials([])
-    setSelectedOccasions([])
     setSearchParams({})
-  }
-
-  const handleToggleBrand = (brand) => {
-    setSelectedBrands(prev =>
-      prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand]
-    )
-  }
-
-  const handleToggleMaterial = (mat) => {
-    setSelectedMaterials(prev =>
-      prev.includes(mat) ? prev.filter(m => m !== mat) : [...prev, mat]
-    )
-  }
-
-  const handleToggleOccasion = (occ) => {
-    setSelectedOccasions(prev =>
-      prev.includes(occ) ? prev.filter(o => o !== occ) : [...prev, occ]
-    )
   }
 
   return (
@@ -607,39 +528,8 @@ export const ShopPage = () => {
                   Hiển thị <span className="font-semibold text-brand-charcoal">{filteredProducts.length}</span> sản phẩm
                 </p>
 
-                {/* Grid/List and Sort */}
+                {/* Sort */}
                 <div className="flex items-center gap-4 self-end sm:self-auto">
-                  
-                  {/* Grid / List view toggle */}
-                  <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => setViewMode('grid')}
-                      className={`p-2 transition-colors ${
-                        viewMode === 'grid'
-                          ? 'bg-brand-cream text-brand-charcoal'
-                          : 'bg-white text-brand-muted hover:text-brand-charcoal'
-                      }`}
-                      title="Hiển thị dạng lưới"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => setViewMode('list')}
-                      className={`p-2 transition-colors ${
-                        viewMode === 'list'
-                          ? 'bg-brand-cream text-brand-charcoal'
-                          : 'bg-white text-brand-muted hover:text-brand-charcoal'
-                      }`}
-                      title="Hiển thị dạng danh sách"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                    </button>
-                  </div>
-
                   {/* Sorter */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-brand-muted uppercase whitespace-nowrap">
