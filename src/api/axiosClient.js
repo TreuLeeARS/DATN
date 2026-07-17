@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8081/api/v1')
+  .replace(/\/+$/, '');
+
 // Tạo một instance của axios với cấu hình mặc định
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8081/api/v1', // Đường dẫn API từ Spring Boot/Node.js của bạn
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -16,6 +19,9 @@ axiosClient.interceptors.request.use(
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Không để header mặc định cũ tiếp tục tồn tại sau logout/hết phiên.
+      delete config.headers.Authorization;
     }
     return config;
   },
@@ -44,6 +50,7 @@ const clearAuthSession = () => {
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('role');
   localStorage.removeItem('username');
+  delete axiosClient.defaults.headers.common.Authorization;
 };
 
 const redirectToLogin = (message = 'Phiên đăng nhập đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại.') => {
@@ -87,16 +94,24 @@ axiosClient.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response;
       
+      // Token mới vẫn bị từ chối sau khi retry: phiên không thể phục hồi.
+      if (status === 401 && originalRequest?._retry) {
+        clearAuthSession();
+        redirectToLogin('Không thể làm mới phiên đăng nhập. Vui lòng đăng nhập lại.');
+        return Promise.reject(error);
+      }
+
       // Nếu gặp lỗi 401 Unauthorized và request chưa từng được retry
-      if (status === 401 && !originalRequest._retry) {
+      if (status === 401 && originalRequest && !originalRequest._retry) {
         // Tránh lặp vô tận nếu API bị lỗi chính là đăng nhập hoặc làm mới token
-        if (originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/refresh')) {
-          clearAuthSession();
+        const requestUrl = originalRequest.url || '';
+        if (requestUrl.includes('/auth/login') || requestUrl.includes('/auth/refresh')) {
           return Promise.reject(error);
         }
 
         // Nếu đang trong quá trình refresh token từ request trước đó, xếp request hiện tại vào hàng đợi
         if (isRefreshing) {
+          originalRequest._retry = true;
           return new Promise((resolve, reject) => {
             failedQueue.push({ resolve, reject });
           })
@@ -125,8 +140,9 @@ axiosClient.interceptors.response.use(
         try {
           // Gọi API refresh token sử dụng axios gốc để tránh lặp interceptor
           const res = await axios.post(
-            `${axiosClient.defaults.baseURL || 'http://localhost:8081/api/v1'}/auth/refresh`,
-            { refreshToken }
+            `${API_BASE_URL}/auth/refresh`,
+            { refreshToken },
+            { timeout: axiosClient.defaults.timeout }
           );
 
           const payload = res.data;
@@ -147,8 +163,7 @@ axiosClient.interceptors.response.use(
             localStorage.setItem('refreshToken', newRefreshToken);
           }
 
-          // Thiết lập header authorization mặc định mới cho axios
-          axiosClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          // Request gốc cần token mới; request kế tiếp sẽ đọc token từ localStorage.
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
           // Giải phóng hàng đợi chờ

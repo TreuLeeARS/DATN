@@ -64,7 +64,7 @@
 
 1. FE gọi login và lưu access/refresh token.
 2. Axios gắn access token vào request.
-3. Khi nhận HTTP 401, interceptor dùng single-flight queue để chỉ gọi một request refresh rồi retry các request đang chờ. Chỉ lỗi xác thực rõ ràng (`success=false`, HTTP 401/403 hoặc HTTP 400 kèm `success=false`) mới xóa phiên; lỗi mạng, response sai contract, HTTP 5xx hoặc HTTP 400 sai chuẩn giữ token để người dùng có thể thử lại.
+3. Khi nhận HTTP 401, interceptor dùng single-flight queue để chỉ gọi một request refresh rồi retry các request đang chờ. Request trong queue được đánh dấu chỉ retry một lần; refresh có timeout 10 giây và không giữ Bearer header mặc định sau logout. Chỉ lỗi xác thực rõ ràng (`success=false`, HTTP 401/403, HTTP 400 kèm `success=false` hoặc token mới vẫn bị 401) mới xóa phiên; lỗi mạng, response sai contract, HTTP 5xx hoặc HTTP 400 sai chuẩn giữ token để người dùng có thể thử lại.
 4. Role được đọc từ JWT để quyết định giao diện quản trị.
 
 ### Giỏ hàng và checkout
@@ -119,6 +119,7 @@
 | MED-05 | Category | BE chưa ngăn chọn descendant làm parent, có thể tạo cycle |
 | MED-10 | Invoice DTO | Invoice chưa trả tách tạm tính, giảm giá, phí ship và ba cấp địa chỉ mới; FE chỉ có thể hiển thị tổng cuối cùng trong hóa đơn |
 | MED-11 | Category permission | BE chỉ ADMIN được update nhưng vẫn cho STAFF restore; cần xác nhận đây có phải nghiệp vụ chủ ý không |
+| MED-12 | Refresh session scope | BE lưu và so khớp nguyên chuỗi `User-Agent`; trình duyệt đổi phiên bản có thể bị coi là thiết bị khác. Logout/reset password thu hồi refresh token theo toàn username nên có thể làm các thiết bị khác hết phiên sau khi access token hết hạn |
 
 ### Đã xử lý ở FE đến ngày 2026-07-16
 
@@ -138,7 +139,7 @@
 | BE version 2 | Đồng bộ `CheckoutRequest`/`OrderResponse`, shipping fee, MoMo redirect + status verification và ma trận quyền product/category/order mới; không sửa BE |
 | MED-07/08 | Decode JWT base64url đúng; màu/size lấy từ variant thật, bỏ field trình bày tự suy diễn |
 | MED-09 | Xóa module chatbot mock, dữ liệu product/response tĩnh và các hook không còn được import; khu gợi ý sản phẩm tiếp tục lấy dữ liệu thật từ BE |
-| Auth refresh resilience | Interceptor phân biệt refresh token bị từ chối với lỗi tạm thời; không còn tự logout khi mất mạng, BE 5xx hoặc response refresh sai contract; khi phiên thật sự hết hạn, trang đăng nhập hiển thị flash message giải thích lý do |
+| Auth refresh resilience | Interceptor phân biệt refresh token bị từ chối với lỗi tạm thời; dọn Bearer header khi hết phiên, đánh dấu retry cho cả request trong queue, giới hạn refresh 10 giây và chặn lặp nếu token mới vẫn 401; không tự logout khi mất mạng/BE 5xx/response sai contract; trang đăng nhập hiển thị flash message khi phiên thật sự hết hạn |
 
 ## Chất lượng và kiểm tra
 
@@ -146,6 +147,7 @@
 |---|---|
 | ESLint toàn FE | 0 errors, 0 warnings tại 2026-07-17 (`npm.cmd run lint`) |
 | Vite production build | Thành công, 156 modules; còn cảnh báo main chunk khoảng 544 kB sau minify |
+| Interceptor runtime simulation | PASS: 3 request 401 đồng thời chỉ gọi refresh 1 lần và retry mỗi request 1 lần; token mới vẫn 401 không lặp refresh; lỗi refresh 500 giữ phiên và lần gọi sau phục hồi; login sai không xóa phiên cũ |
 | Smoke test với BE đang chạy | Product list/detail và category từng trả thành công; `/payment-methods` của BE version 2 trả 401 khi gọi không token, phù hợp vì checkout FE yêu cầu đăng nhập |
 | Automated tests | Chưa có bộ test đủ để xác nhận các luồng tích hợp FE–BE |
 
@@ -183,3 +185,4 @@ Khi sửa hoặc thêm tính năng, cập nhật tối thiểu:
 | 2026-07-16 | Dọn script tạm | Xóa toàn bộ `scratch/`, `debug_db.js` và các script `scratch_*` không thuộc runtime/build FE; loại bỏ các script có lệnh xóa dữ liệu để tránh chạy nhầm. |
 | 2026-07-17 | Auth refresh | Chỉ logout khi refresh token bị BE từ chối, trả HTTP 401/403 hoặc HTTP 400 kèm `success=false`; giữ phiên khi mất mạng, HTTP 5xx, HTTP 400 sai chuẩn hay response sai contract; bảo toàn single-flight queue, đường dẫn quay lại và hiển thị flash message giải thích khi phiên thật sự hết hạn; lint/build thành công. |
 | 2026-07-17 | Danh sách sản phẩm STAFF | Tách nguồn dữ liệu theo quyền: ADMIN tiếp tục gọi `/products/admin` để quản lý cả bản ghi xóa mềm, STAFF gọi `/products` và public detail đúng nghiệp vụ chỉ tra cứu; không sửa BE. |
+| 2026-07-17 | Audit refresh token | Sửa Bearer header bị lưu sau logout, đánh dấu retry cho request chờ, thêm timeout 10 giây cho `/auth/refresh`, chặn vòng refresh khi token mới vẫn 401 và không xóa phiên khi login sai; kiểm thử mô phỏng queue/transient failure/recovery đều pass; ghi nhận ràng buộc `User-Agent`/thu hồi đa thiết bị là blocker BE. |
