@@ -39,6 +39,41 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+const clearAuthSession = () => {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('role');
+  localStorage.removeItem('username');
+};
+
+const redirectToLogin = (message = 'Phiên đăng nhập đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại.') => {
+  if (window.location.pathname === '/auth') return;
+
+  sessionStorage.setItem('authFlashMessage', message);
+  sessionStorage.setItem(
+    'authRedirectUrl',
+    `${window.location.pathname}${window.location.search}`
+  );
+  window.location.href = '/auth';
+};
+
+const createRefreshRejectedError = (message) => {
+  const error = new Error(message || 'Refresh token không còn hợp lệ');
+  error.code = 'REFRESH_TOKEN_REJECTED';
+  return error;
+};
+
+const shouldClearAuthSession = (error) => {
+  if (error?.code === 'REFRESH_TOKEN_REJECTED') return true;
+
+  const status = error?.response?.status;
+  if ([401, 403].includes(status)) return true;
+
+  // BE có chỗ đang quy đổi lỗi hệ thống thành HTTP 400, nên chỉ coi 400 là
+  // lỗi phiên khi body cũng xác nhận request thất bại.
+  return status === 400 && error?.response?.data?.success === false;
+};
+
 // Response Interceptor: Xử lý dữ liệu trả về và lỗi tập trung
 axiosClient.interceptors.response.use(
   (response) => {
@@ -56,10 +91,7 @@ axiosClient.interceptors.response.use(
       if (status === 401 && !originalRequest._retry) {
         // Tránh lặp vô tận nếu API bị lỗi chính là đăng nhập hoặc làm mới token
         if (originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/refresh')) {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('role');
-          localStorage.removeItem('username');
+          clearAuthSession();
           return Promise.reject(error);
         }
 
@@ -82,12 +114,12 @@ axiosClient.interceptors.response.use(
 
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) {
+          const missingRefreshTokenError = createRefreshRejectedError('Không tìm thấy refresh token');
+          processQueue(missingRefreshTokenError, null);
           isRefreshing = false;
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('role');
-          localStorage.removeItem('username');
-          return Promise.reject(error);
+          clearAuthSession();
+          redirectToLogin();
+          return Promise.reject(missingRefreshTokenError);
         }
 
         try {
@@ -97,38 +129,48 @@ axiosClient.interceptors.response.use(
             { refreshToken }
           );
 
-          if (res.data && res.data.data) {
-            const { accessToken, refreshToken: newRefreshToken } = res.data.data;
-            
-            localStorage.setItem('accessToken', accessToken);
-            if (newRefreshToken) {
-              localStorage.setItem('refreshToken', newRefreshToken);
-            }
+          const payload = res.data;
 
-            // Thiết lập header authorization mặc định mới cho axios
-            axiosClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-
-            // Giải phóng hàng đợi chờ
-            processQueue(null, accessToken);
-            isRefreshing = false;
-
-            // Thực hiện lại request ban đầu với token mới
-            return axiosClient(originalRequest);
-          } else {
-            throw new Error('Refresh token response invalid');
+          // BE hiện có thể trả HTTP 200 kèm success=false khi refresh token bị từ chối.
+          if (payload?.success === false) {
+            throw createRefreshRejectedError(payload.message);
           }
+
+          const { accessToken, refreshToken: newRefreshToken } = payload?.data || {};
+          if (!accessToken) {
+            // Sai contract hoặc lỗi tạm thời từ server chưa đủ căn cứ để xóa phiên đăng nhập.
+            throw new Error('Response refresh thiếu accessToken');
+          }
+
+          localStorage.setItem('accessToken', accessToken);
+          if (newRefreshToken) {
+            localStorage.setItem('refreshToken', newRefreshToken);
+          }
+
+          // Thiết lập header authorization mặc định mới cho axios
+          axiosClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+          // Giải phóng hàng đợi chờ
+          processQueue(null, accessToken);
+          isRefreshing = false;
+
+          // Thực hiện lại request ban đầu với token mới
+          return axiosClient(originalRequest);
         } catch (refreshError) {
           processQueue(refreshError, null);
           isRefreshing = false;
-          
-          // Hết hạn cả refresh token -> đăng xuất và chuyển hướng
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('role');
-          localStorage.removeItem('username');
-          
-          window.location.href = '/auth';
+
+          if (shouldClearAuthSession(refreshError)) {
+            // Chỉ kết thúc phiên khi server xác nhận refresh token không còn hợp lệ.
+            clearAuthSession();
+            redirectToLogin();
+          } else {
+            // Network error, timeout, HTTP 5xx hoặc response sai contract là lỗi tạm thời.
+            // Giữ token để người dùng có thể thử lại khi server hoạt động ổn định.
+            console.error('Không thể refresh token do lỗi tạm thời:', refreshError);
+          }
+
           return Promise.reject(refreshError);
         }
       }

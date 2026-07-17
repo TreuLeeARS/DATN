@@ -1,6 +1,6 @@
 # BEE Store — Project Context
 
-> Cập nhật gần nhất: 2026-07-16
+> Cập nhật gần nhất: 2026-07-17
 > Mục đích: đọc file này trước khi làm việc để không phải quét lại toàn bộ FE và BE.
 
 ## Quy tắc làm việc
@@ -64,7 +64,7 @@
 
 1. FE gọi login và lưu access/refresh token.
 2. Axios gắn access token vào request.
-3. Khi nhận HTTP 401, interceptor thử refresh rồi gọi lại request.
+3. Khi nhận HTTP 401, interceptor dùng single-flight queue để chỉ gọi một request refresh rồi retry các request đang chờ. Chỉ lỗi xác thực rõ ràng (`success=false`, HTTP 401/403 hoặc HTTP 400 kèm `success=false`) mới xóa phiên; lỗi mạng, response sai contract, HTTP 5xx hoặc HTTP 400 sai chuẩn giữ token để người dùng có thể thử lại.
 4. Role được đọc từ JWT để quyết định giao diện quản trị.
 
 ### Giỏ hàng và checkout
@@ -138,12 +138,13 @@
 | BE version 2 | Đồng bộ `CheckoutRequest`/`OrderResponse`, shipping fee, MoMo redirect + status verification và ma trận quyền product/category/order mới; không sửa BE |
 | MED-07/08 | Decode JWT base64url đúng; màu/size lấy từ variant thật, bỏ field trình bày tự suy diễn |
 | MED-09 | Xóa module chatbot mock, dữ liệu product/response tĩnh và các hook không còn được import; khu gợi ý sản phẩm tiếp tục lấy dữ liệu thật từ BE |
+| Auth refresh resilience | Interceptor phân biệt refresh token bị từ chối với lỗi tạm thời; không còn tự logout khi mất mạng, BE 5xx hoặc response refresh sai contract; khi phiên thật sự hết hạn, trang đăng nhập hiển thị flash message giải thích lý do |
 
 ## Chất lượng và kiểm tra
 
 | Kiểm tra gần nhất | Kết quả |
 |---|---|
-| ESLint toàn FE | 0 errors, 0 warnings tại 2026-07-16 (`npm.cmd run lint -- --no-cache`) |
+| ESLint toàn FE | 0 errors, 0 warnings tại 2026-07-17 (`npm.cmd run lint`) |
 | Vite production build | Thành công, 156 modules; còn cảnh báo main chunk khoảng 544 kB sau minify |
 | Smoke test với BE đang chạy | Product list/detail và category từng trả thành công; `/payment-methods` của BE version 2 trả 401 khi gọi không token, phù hợp vì checkout FE yêu cầu đăng nhập |
 | Automated tests | Chưa có bộ test đủ để xác nhận các luồng tích hợp FE–BE |
@@ -180,3 +181,4 @@ Khi sửa hoặc thêm tính năng, cập nhật tối thiểu:
 | 2026-07-16 | Đồng bộ BE version 2 | Thêm shipping-fee, gửi ba cấp địa chỉ, bật flow MoMo và trang `/payment-success`, render breakdown tiền đơn hàng, cập nhật quyền STAFF cho product/category/order; ghi nhận giới hạn Invoice DTO và callback MoMo local; lint/build toàn FE thành công. |
 | 2026-07-16 | Dọn source legacy | Xóa `AIStylingAssistant`, `useAIChat`, `useScrollTrigger`, dữ liệu `aiResponses`/`products` mock không còn nằm trong cây import; cập nhật tài liệu liên quan. |
 | 2026-07-16 | Dọn script tạm | Xóa toàn bộ `scratch/`, `debug_db.js` và các script `scratch_*` không thuộc runtime/build FE; loại bỏ các script có lệnh xóa dữ liệu để tránh chạy nhầm. |
+| 2026-07-17 | Auth refresh | Chỉ logout khi refresh token bị BE từ chối, trả HTTP 401/403 hoặc HTTP 400 kèm `success=false`; giữ phiên khi mất mạng, HTTP 5xx, HTTP 400 sai chuẩn hay response sai contract; bảo toàn single-flight queue, đường dẫn quay lại và hiển thị flash message giải thích khi phiên thật sự hết hạn; lint/build thành công. |

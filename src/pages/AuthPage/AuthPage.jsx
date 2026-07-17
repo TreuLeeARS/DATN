@@ -1,6 +1,7 @@
-import { useState, useLayoutEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
+import toast from 'react-hot-toast'
 import { AuthVisual } from './AuthVisual.jsx'
 import { LoginForm } from './LoginForm.jsx'
 import { RegisterForm } from './RegisterForm.jsx'
@@ -32,6 +33,14 @@ export const AuthPage = () => {
   const greetingRef = useRef(null)
   const tabIndicatorRef = useRef(null)
   const isAnimating = useRef(false)
+
+  useEffect(() => {
+    const authMessage = sessionStorage.getItem('authFlashMessage')
+    if (!authMessage) return
+
+    sessionStorage.removeItem('authFlashMessage')
+    toast.error(authMessage, { id: 'auth-session-message' })
+  }, [])
 
   // ─── GSAP: Page Entrance Animation ───
   useLayoutEffect(() => {
