@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import gsap from 'gsap'
-import { SocialLogin } from './SocialLogin.jsx'
 import authApi from '../../api/authApi'
 import { LegalDocumentModal } from './LegalDocumentModal.jsx'
 
@@ -483,18 +482,6 @@ export const RegisterForm = ({ onSwitchTab }) => {
             'Tạo Tài Khoản'
           )}
         </button>
-      </div>
-
-      {/* ─── Divider ─── */}
-      <div className="auth-form-field flex items-center gap-4 my-8">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-sm text-brand-muted font-medium">hoặc</span>
-        <div className="flex-1 h-px bg-gray-200" />
-      </div>
-
-      {/* ─── Social Login ─── */}
-      <div className="auth-form-field">
-        <SocialLogin />
       </div>
 
       {/* ─── Switch to Login ─── */}

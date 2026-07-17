@@ -326,7 +326,7 @@ export const UserManager = () => {
     <div className="space-y-8 animate-fade-in font-sans pb-16">
       
       {/* ─── STATISTICS CARDS ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="bg-white p-5 rounded-none border border-black/5 flex flex-col justify-between h-28 shadow-sm">
           <p className="text-[10px] font-bold tracking-widest text-brand-muted uppercase">Tổng người dùng</p>
           <div className="flex items-baseline space-x-2">
@@ -602,7 +602,7 @@ export const UserManager = () => {
             </div>
 
             <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="block font-semibold uppercase text-brand-muted text-[9.5px] tracking-wider">Họ (Last Name)</label>
                   <input

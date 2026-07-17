@@ -5,6 +5,7 @@ import invoiceApi from '../../api/invoiceApi.js'
 import paymentApi from '../../api/paymentApi.js'
 import { parseShippingAddress } from '../../utils/shippingAddress.js'
 import { isStaff } from '../../utils/auth.js'
+import { escapeHtml } from '../../utils/html.js'
 
 export const InvoiceManager = () => {
   const userIsStaff = isStaff()
@@ -105,8 +106,8 @@ export const InvoiceManager = () => {
         <tr>
           <td style="text-align: center; border-bottom: 1px solid #eee; padding: 8px;">${idx + 1}</td>
           <td style="border-bottom: 1px solid #eee; padding: 8px;">
-            <div style="font-weight: 600;">${item.productName || 'Sản phẩm không rõ'}</div>
-            ${attrs ? `<div style="font-size: 11px; color: #666; margin-top: 2px;">${attrs}</div>` : ''}
+            <div style="font-weight: 600;">${escapeHtml(item.productName || 'Sản phẩm không rõ')}</div>
+            ${attrs ? `<div style="font-size: 11px; color: #666; margin-top: 2px;">${escapeHtml(attrs)}</div>` : ''}
           </td>
           <td style="text-align: center; border-bottom: 1px solid #eee; padding: 8px;">${item.quantity || 0}</td>
           <td style="text-align: right; border-bottom: 1px solid #eee; padding: 8px;">${formatVND(item.unitPrice || 0)}</td>
@@ -120,7 +121,7 @@ export const InvoiceManager = () => {
       <html>
         <head>
           <meta charset="utf-8">
-          <title>Hóa đơn #${invoice.id}</title>
+          <title>Hóa đơn #${escapeHtml(invoice.id)}</title>
           <style>
             body {
               font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -258,17 +259,17 @@ export const InvoiceManager = () => {
                 <td>
                   <h1 class="title">OUTTA STORE 💜</h1>
                   <div class="shop-info">
-                    <strong>Đơn vị bán hàng:</strong> Bee Store E-Commerce<br>
+                    <strong>Đơn vị bán hàng:</strong> OUTTA E-Commerce<br>
                     <strong>Địa chỉ:</strong> 123 Đường Cầu Giấy, Quận Cầu Giấy, Hà Nội<br>
-                    <strong>Hotline:</strong> 0363 977 304 | <strong>Email:</strong> support@bee-store.vn
+                    <strong>Hotline:</strong> 0363 977 304 | <strong>Email:</strong> support@outta.vn
                   </div>
                 </td>
                 <td class="invoice-details">
                   <div style="font-size: 16px; font-weight: bold; color: #000; margin-bottom: 5px;">HÓA ĐƠN BÁN HÀNG</div>
-                  <strong>Mã hóa đơn:</strong> #${invoice.id}<br>
-                  <strong>Ngày xuất:</strong> ${dateStr}<br>
-                  <strong>Mã đơn hàng:</strong> #${invoice.order?.orderId || 'N/A'}<br>
-                  <strong>Ngày đặt hàng:</strong> ${orderDateStr}
+                  <strong>Mã hóa đơn:</strong> #${escapeHtml(invoice.id)}<br>
+                  <strong>Ngày xuất:</strong> ${escapeHtml(dateStr)}<br>
+                  <strong>Mã đơn hàng:</strong> #${escapeHtml(invoice.order?.orderId || 'N/A')}<br>
+                  <strong>Ngày đặt hàng:</strong> ${escapeHtml(orderDateStr)}
                 </td>
               </tr>
             </table>
@@ -278,13 +279,13 @@ export const InvoiceManager = () => {
               <tr>
                 <td>
                   <span class="info-label">Khách hàng nhận hóa đơn:</span><br>
-                  Họ tên: ${customerName}<br>
-                  Điện thoại: ${customerPhone}<br>
-                  Email: ${customerEmail}
+                  Họ tên: ${escapeHtml(customerName)}<br>
+                  Điện thoại: ${escapeHtml(customerPhone)}<br>
+                  Email: ${escapeHtml(customerEmail)}
                 </td>
                 <td>
                   <span class="info-label">Địa chỉ nhận hàng:</span><br>
-                  ${shippingAddress.replace(/\n/g, '<br>')}
+                  ${escapeHtml(shippingAddress).replace(/\n/g, '<br>')}
                 </td>
               </tr>
             </table>
@@ -294,15 +295,15 @@ export const InvoiceManager = () => {
               <tr>
                 <td>
                   <span class="info-label">Phương thức:</span><br>
-                  ${paymentInfo?.paymentMethod || 'Không có dữ liệu từ BE'}
+                  ${escapeHtml(paymentInfo?.paymentMethod || 'Không có dữ liệu từ BE')}
                 </td>
                 <td>
                   <span class="info-label">Trạng thái:</span><br>
-                  ${paymentInfo?.paymentStatus || 'Không có dữ liệu từ BE'}
+                  ${escapeHtml(paymentInfo?.paymentStatus || 'Không có dữ liệu từ BE')}
                 </td>
                 <td>
                   <span class="info-label">Mã thanh toán:</span><br>
-                  ${paymentInfo?.paymentId ?? 'Không có dữ liệu từ BE'}
+                  ${escapeHtml(paymentInfo?.paymentId ?? 'Không có dữ liệu từ BE')}
                 </td>
               </tr>
             </table>
@@ -332,7 +333,7 @@ export const InvoiceManager = () => {
 
             <div class="footer">
               Cảm ơn quý khách đã mua sắm tại OUTTA STORE!<br>
-              Hóa đơn này được tạo tự động bởi hệ thống quản lý bán hàng Bee Store.<br>
+              Hóa đơn này được tạo tự động bởi hệ thống quản lý bán hàng OUTTA.<br>
               <em>Bản in hóa đơn có giá trị lưu giữ và đối chiếu thông tin giao nhận hàng.</em>
             </div>
           </div>

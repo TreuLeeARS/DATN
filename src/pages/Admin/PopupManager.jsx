@@ -326,7 +326,8 @@ export const PopupManager = () => {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+              <div className="flex-1 space-y-5 overflow-y-auto p-6">
               {/* Header Badge */}
               <div className="space-y-1.5">
                 <label className="block font-semibold uppercase text-brand-muted text-[10px]">
@@ -388,7 +389,7 @@ export const PopupManager = () => {
                   name="promotionCode"
                   value={formData.promotionCode}
                   onChange={handleInputChange}
-                  placeholder="Ví dụ: PEESTART15, COLDWINTER"
+                  placeholder="Ví dụ: OUTTASTART15, COLDWINTER"
                   maxLength={50}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:border-brand-charcoal uppercase"
                   required
@@ -396,7 +397,9 @@ export const PopupManager = () => {
               </div>
 
               {/* Form Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-gray-100">
+              </div>
+
+              <div className="flex shrink-0 gap-3 border-t border-gray-100 bg-white px-6 py-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

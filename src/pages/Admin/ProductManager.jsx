@@ -6,6 +6,7 @@ import productApi from '../../api/productApi'
 import categoryApi from '../../api/categoryApi'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 import { isAdmin } from '../../utils/auth.js'
+import { fetchAllPagedContent } from '../../utils/pagination.js'
 
 const translateColor = (color) => {
   if (!color) return ''
@@ -137,15 +138,14 @@ export const ProductManager = () => {
       const listProducts = canManageProducts
         ? productApi.getAllProductsForAdmin
         : productApi.getAllProducts
-      const res = await listProducts({
-        page: 0,
-        size: 1000,
-        sort: 'productId,desc'
-      })
+      const allProducts = await fetchAllPagedContent(
+        params => listProducts(params),
+        { sort: 'productId,desc' }
+      )
 
-      if (res?.data) {
+      if (allProducts) {
         const normalizedSearch = searchQuery.trim().toLowerCase()
-        const filtered = (res.data.content || []).filter(product => {
+        const filtered = allProducts.filter(product => {
           const matchesCategory = selectedCategoryFilter === ''
             || Number(product.categoryId) === Number(selectedCategoryFilter)
           const matchesName = !normalizedSearch
@@ -254,9 +254,11 @@ export const ProductManager = () => {
       categoryId: Number(productForm.categoryId)
     }
 
+    let productDataSaved = false
     try {
       if (editingProduct) {
         await productApi.updateProduct(editingProduct.productId, basePayload)
+        productDataSaved = true
 
         const oldUrls = editingProduct.imageUrls || []
         const removedUrls = oldUrls.filter(url => !cleanImageUrls.includes(url))
@@ -289,7 +291,10 @@ export const ProductManager = () => {
       fetchProducts()
     } catch (err) {
       console.error('Error saving product:', err)
-      toast.error(err.response?.data?.message || 'Lỗi khi lưu sản phẩm.')
+      toast.error(productDataSaved
+        ? 'Thông tin sản phẩm đã lưu nhưng cập nhật ảnh chưa hoàn tất. Danh sách đã được đồng bộ lại.'
+        : err.response?.data?.message || 'Lỗi khi lưu sản phẩm.')
+      await fetchProducts()
     }
   }
 
@@ -850,7 +855,7 @@ export const ProductManager = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="block font-semibold uppercase text-brand-muted text-[9px]">Giá niêm yết (VND) *</label>
                   <input
@@ -1019,7 +1024,7 @@ export const ProductManager = () => {
             </div>
 
             <form onSubmit={handleVariantSubmit} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="block font-semibold uppercase text-brand-muted text-[9px]">Kích cỡ (Size) *</label>
                   <select
@@ -1061,7 +1066,7 @@ export const ProductManager = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="block font-semibold uppercase text-brand-muted text-[9px]">Giá bán (VND) *</label>
                   <input

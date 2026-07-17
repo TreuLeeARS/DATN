@@ -327,9 +327,9 @@ export const CouponManager = () => {
       {/* ─── MODAL: CREATE COUPON ─── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-charcoal/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white border border-black/10 shadow-2xl p-6 md:p-8 space-y-6 rounded-none">
+          <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-none border border-black/10 bg-white shadow-2xl">
             
-            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 pb-3 pt-6 md:px-8 md:pt-8">
               <h3 className="text-xs font-bold uppercase tracking-widest text-brand-charcoal">
                 Tạo mã giảm giá mới
               </h3>
@@ -341,7 +341,8 @@ export const CouponManager = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col text-xs">
+              <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4 md:px-8">
               <div className="space-y-1">
                 <label className="block font-semibold uppercase text-brand-muted text-[9.5px] tracking-wider">Mã coupon (Code) *</label>
                 <input
@@ -355,7 +356,7 @@ export const CouponManager = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="block font-semibold uppercase text-brand-muted text-[9.5px] tracking-wider">Giá trị giảm (VND) *</label>
                   <input
@@ -393,7 +394,7 @@ export const CouponManager = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="block font-semibold uppercase text-brand-muted text-[9.5px] tracking-wider">Tổng lượt dùng tối đa</label>
                   <input
@@ -418,7 +419,9 @@ export const CouponManager = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              </div>
+
+              <div className="flex shrink-0 justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4 md:px-8">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

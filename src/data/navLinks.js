@@ -33,24 +33,9 @@ export const navLinks = [
 
 export const socialLinks = [
   {
-    platform: 'Instagram',
-    href: '#',
-    icon: 'instagram',
-  },
-  {
     platform: 'Facebook',
     href: 'https://www.facebook.com/profile.php?id=61591331740630',
     icon: 'facebook',
-  },
-  {
-    platform: 'GitHub',
-    href: '#',
-    icon: 'github',
-  },
-  {
-    platform: 'YouTube',
-    href: '#',
-    icon: 'youtube',
   },
 ]
 
@@ -68,19 +53,15 @@ export const footerLinks = [
   {
     heading: 'Chăm Sóc Khách Hàng',
     links: [
-      { label: 'Liên Hệ', href: '#' },
-      { label: 'Thông Tin Vận Chuyển', href: '#' },
-      { label: 'Đổi Trả', href: '#' },
-      { label: 'Câu Hỏi Thường Gặp', href: '#' },
+      { label: 'Email hỗ trợ', href: 'mailto:support@outta.vn' },
+      { label: 'Hotline: 0363 977 304', href: 'tel:0363977304' },
+      { label: 'Yêu cầu đổi trả', href: 'mailto:support@outta.vn?subject=Yêu cầu đổi trả đơn hàng' },
     ],
   },
   {
     heading: 'Về Chúng Tôi',
     links: [
       { label: 'Giới Thiệu', href: '/about' },
-      { label: 'Phát Triển Bền Vững', href: '#' },
-      { label: 'Blog', href: '#' },
-      { label: 'Tuyển Dụng', href: '#' },
     ],
   },
 ]

@@ -7,6 +7,8 @@ import paymentApi from '../../api/paymentApi'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 import { isAdminOrStaff } from '../../utils/auth.js'
 import { parseShippingAddress } from '../../utils/shippingAddress.js'
+import { fetchAllPagedContent } from '../../utils/pagination.js'
+import { isPaymentNotFoundError } from '../../utils/payment.js'
 
 export const OrderManager = () => {
   const canCancelOrders = isAdminOrStaff()
@@ -41,6 +43,19 @@ export const OrderManager = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [loadingPayment, setLoadingPayment] = useState(false)
+  const [paymentLoadFailed, setPaymentLoadFailed] = useState(false)
+  const paymentMethodName = paymentInfo?.paymentMethod?.toUpperCase() || ''
+  const paymentStatus = paymentInfo?.status
+  const isMomoPayment = paymentMethodName.includes('MOMO')
+  const canConfirmCreatedOrder = !loadingPayment
+    && !paymentLoadFailed
+    && selectedOrder?.status === 'CREATED'
+    && (!isMomoPayment || paymentStatus === 'SUCCESS')
+  const canCancelSelectedOrder = canCancelOrders
+    && !loadingPayment
+    && !paymentLoadFailed
+    && paymentStatus !== 'SUCCESS'
+    && (selectedOrder?.status === 'CREATED' || selectedOrder?.status === 'CONFIRMED')
   const availableStatuses = [...new Set(allOrders.map(order => order.status).filter(Boolean))]
   
   const filteredOrders = allOrders.filter(o => {
@@ -56,14 +71,11 @@ export const OrderManager = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true)
-      const res = await orderApi.getAllOrders({
-        page: 0,
-        size: 1000,
-        sort: 'orderId,desc'
-      })
-      if (res && res.data) {
-        setAllOrders(res.data.content || [])
-      }
+      const orders = await fetchAllPagedContent(
+        params => orderApi.getAllOrders(params),
+        { sort: 'orderId,desc' }
+      )
+      setAllOrders(orders)
     } catch (err) {
       console.error('Error fetching orders:', err)
       toast.error('Không thể tải danh sách đơn hàng.')
@@ -80,6 +92,7 @@ export const OrderManager = () => {
   const fetchPaymentInfo = async (orderId) => {
     try {
       setLoadingPayment(true)
+      setPaymentLoadFailed(false)
       setPaymentInfo(null)
       const res = await paymentApi.getPaymentByOrderId(orderId)
       if (res && res.data) {
@@ -87,6 +100,11 @@ export const OrderManager = () => {
       }
     } catch (err) {
       console.error('Error loading payment info:', err)
+      if (isPaymentNotFoundError(err)) {
+        setPaymentInfo({ status: 'NOT_CREATED' })
+      } else {
+        setPaymentLoadFailed(true)
+      }
     } finally {
       setLoadingPayment(false)
     }
@@ -411,7 +429,7 @@ export const OrderManager = () => {
                       </p>
                       
                       {/* Confirm COD Payment Trigger for Admin */}
-                      {paymentInfo.paymentMethod?.toUpperCase().includes('COD') && paymentInfo.status !== 'SUCCESS' && (selectedOrder.status === 'CONFIRMED' || selectedOrder.status === 'SHIPPING') && (
+                      {paymentMethodName.includes('COD') && paymentStatus === 'PENDING' && selectedOrder.status === 'SHIPPING' && (
                         <button
                           type="button"
                           onClick={() => handleConfirmCodPayment(paymentInfo.paymentId, selectedOrder.orderId)}
@@ -486,7 +504,7 @@ export const OrderManager = () => {
 
               <div className="flex gap-2">
                 {/* 1. Confirm / Prepare shipment */}
-                {selectedOrder.status === 'CREATED' && (
+                {canConfirmCreatedOrder && (
                   <button
                     onClick={() => handleUpdateStatus(selectedOrder.orderId, 'CONFIRMED')}
                     className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold tracking-wider uppercase px-4 py-2.5 rounded-none cursor-pointer"
@@ -516,7 +534,7 @@ export const OrderManager = () => {
                 )}
 
                 {/* 4. Cancel Order */}
-                {canCancelOrders && (selectedOrder.status === 'CREATED' || selectedOrder.status === 'CONFIRMED') && (
+                {canCancelSelectedOrder && (
                   <button
                     onClick={() => handleCancelOrder(selectedOrder.orderId)}
                     className="border border-red-600 text-red-600 hover:bg-red-50 text-[10px] font-bold tracking-wider uppercase px-4 py-2.5 rounded-none cursor-pointer"

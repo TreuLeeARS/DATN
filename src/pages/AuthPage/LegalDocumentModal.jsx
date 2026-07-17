@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 const documents = {
   terms: {
     title: 'Điều khoản dịch vụ',
-    intro: 'Khi tạo tài khoản và sử dụng BEE Store, bạn xác nhận đã đọc, hiểu và đồng ý với các điều khoản dưới đây.',
+    intro: 'Khi tạo tài khoản và sử dụng OUTTA, bạn xác nhận đã đọc, hiểu và đồng ý với các điều khoản dưới đây.',
     sections: [
       {
         title: '1. Tài khoản người dùng',
@@ -12,7 +12,7 @@ const documents = {
       },
       {
         title: '2. Đặt hàng và thanh toán',
-        content: 'Đơn hàng chỉ được ghi nhận khi hệ thống xác nhận tạo đơn thành công. Phương thức thanh toán hiện được hỗ trợ là thanh toán khi nhận hàng (COD).'
+        content: 'Đơn hàng chỉ được ghi nhận khi hệ thống xác nhận tạo đơn thành công. Hệ thống hiện hỗ trợ thanh toán khi nhận hàng (COD) và thanh toán trực tuyến qua MoMo.'
       },
       {
         title: '3. Giá, khuyến mại và tồn kho',
@@ -28,13 +28,13 @@ const documents = {
       },
       {
         title: '6. Thay đổi điều khoản',
-        content: 'BEE Store có thể cập nhật điều khoản khi dịch vụ thay đổi. Phiên bản áp dụng sẽ được công bố trên giao diện đăng ký hoặc khu vực thông báo.'
+        content: 'OUTTA có thể cập nhật điều khoản khi dịch vụ thay đổi. Phiên bản áp dụng sẽ được công bố trên giao diện đăng ký hoặc khu vực thông báo.'
       }
     ]
   },
   privacy: {
     title: 'Chính sách bảo mật',
-    intro: 'Chính sách này mô tả cách BEE Store sử dụng thông tin bạn cung cấp khi đăng ký, đặt hàng và sử dụng dịch vụ.',
+    intro: 'Chính sách này mô tả cách OUTTA sử dụng thông tin bạn cung cấp khi đăng ký, đặt hàng và sử dụng dịch vụ.',
     sections: [
       {
         title: '1. Thông tin được thu thập',
@@ -96,7 +96,7 @@ export const LegalDocumentModal = ({ documentType, onClose }) => {
         <header className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
           <div>
             <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-brand-muted">
-              BEE Store
+              OUTTA
             </p>
             <h2 id="legal-document-title" className="font-display text-2xl font-bold text-brand-charcoal">
               {legalDocument.title}

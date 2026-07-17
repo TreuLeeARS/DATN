@@ -226,7 +226,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
           onClick={() => setIsModalOpen(false)}
         >
           <div 
-            className="w-full max-w-4xl bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col md:flex-row relative max-h-[90vh] md:max-h-[85vh]"
+            className="relative flex h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl md:h-auto md:max-h-[85vh] md:flex-row"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -239,8 +239,8 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
             </button>
 
             {/* Left Column: Image Gallery */}
-            <div className="w-full md:w-1/2 p-6 flex flex-col justify-center bg-brand-cream/20">
-              <div className="w-full aspect-square md:aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 relative shrink-0">
+            <div className="w-full shrink-0 bg-brand-cream/20 p-4 md:w-1/2 md:p-6">
+              <div className="relative h-[34vh] max-h-[280px] w-full overflow-hidden rounded-xl bg-gray-50 md:h-auto md:max-h-none md:aspect-[4/5]">
                 <img
                   src={
                     (product.images[activeImageIndex] && !brokenImages[activeImageIndex])
@@ -259,7 +259,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
 
               {/* Thumbnail Gallery */}
               {product.images.filter((img, idx) => img && img.trim() !== '' && !brokenImages[idx]).length > 1 && (
-                <div className="flex flex-wrap gap-2 mt-4 py-1 justify-start">
+                <div className="mt-3 flex flex-wrap justify-start gap-2 py-1 md:mt-4">
                   {product.images.map((img, idx) => {
                     if (!img || img.trim() === '' || brokenImages[idx]) return null;
                     return (
@@ -288,8 +288,8 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
             </div>
 
             {/* Right Column: Details & Purchases */}
-            <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-between overflow-y-auto max-h-[45vh] md:max-h-none">
-              <div>
+            <div className="flex min-h-0 w-full flex-1 flex-col md:w-1/2">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8">
                 <span className="text-[10px] uppercase font-bold tracking-wider text-brand-muted">
                   {categoryLabels[product.category] || product.category}
                 </span>
@@ -411,7 +411,7 @@ export const ProductCard = ({ product: initialProduct, onAddToCart, onBuyNow }) 
               </div>
 
               {/* Purchase Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-gray-100 mt-auto">
+              <div className="flex shrink-0 gap-3 border-t border-gray-100 bg-white px-4 py-3 md:px-8 md:py-4">
                 <button
                   disabled={isOutOfStock}
                   onClick={() => {

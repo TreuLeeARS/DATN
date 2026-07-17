@@ -102,7 +102,7 @@ export const ActionLogManager = () => {
       <div className="bg-white p-5 border border-black/10 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="block text-[10px] font-bold uppercase text-brand-muted tracking-wider">Tìm theo tài khoản</label>
+            <label className="block text-[10px] font-bold uppercase text-brand-muted tracking-wider">Tìm tài khoản trong trang hiện tại</label>
             <input
               type="text"
               placeholder="Nhập tên tài khoản (username)..."
@@ -112,7 +112,7 @@ export const ActionLogManager = () => {
             />
           </div>
           <div className="space-y-1">
-            <label className="block text-[10px] font-bold uppercase text-brand-muted tracking-wider">Lọc theo hành động</label>
+            <label className="block text-[10px] font-bold uppercase text-brand-muted tracking-wider">Lọc hành động trong trang hiện tại</label>
             <select
               value={actionTypeFilter}
               onChange={(e) => setActionTypeFilter(e.target.value)}
@@ -120,15 +120,16 @@ export const ActionLogManager = () => {
             >
               <option value="ALL">Tất cả hành động</option>
               <option value="CREATE_ORDER">CREATE_ORDER (Tạo đơn hàng)</option>
-              <option value="CONFIRM_ORDER">CONFIRM_ORDER (Xác nhận đơn)</option>
               <option value="SHIPPING_ORDER">SHIPPING_ORDER (Giao hàng)</option>
               <option value="DELIVERED_ORDER">DELIVERED_ORDER (Đã giao hàng)</option>
               <option value="CANCEL_ORDER">CANCEL_ORDER (Hủy đơn hàng)</option>
               <option value="UPDATE_ORDER">UPDATE_ORDER (Cập nhật đơn)</option>
-              <option value="DELETE_ORDER">DELETE_ORDER (Xóa đơn hàng)</option>
             </select>
           </div>
         </div>
+        <p className="mt-3 text-[10px] text-amber-700">
+          API hiện chưa nhận điều kiện tìm kiếm, nên bộ lọc chỉ áp dụng cho các log của trang đang xem.
+        </p>
       </div>
 
       {/* LOGS LIST TABLE */}

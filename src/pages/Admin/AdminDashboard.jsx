@@ -3,6 +3,13 @@ import { Link } from 'react-router-dom'
 import dashboardApi from '../../api/dashboardApi'
 import { isStaff } from '../../utils/auth.js'
 
+const formatLocalDate = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export const AdminDashboard = () => {
   const userIsStaff = isStaff()
   const [summary, setSummary] = useState({
@@ -22,31 +29,40 @@ export const AdminDashboard = () => {
         
         // Tính toán khoảng thời gian
         const today = new Date()
-        const toStr = today.toISOString().split('T')[0]
+        const toStr = formatLocalDate(today)
         
         const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(today.getDate() - 30)
-        const fromStr30 = thirtyDaysAgo.toISOString().split('T')[0]
+        thirtyDaysAgo.setDate(today.getDate() - 29)
+        const fromStr30 = formatLocalDate(thirtyDaysAgo)
 
         const sevenDaysAgo = new Date()
-        sevenDaysAgo.setDate(today.getDate() - 7)
-        const fromStr7 = sevenDaysAgo.toISOString().split('T')[0]
+        sevenDaysAgo.setDate(today.getDate() - 6)
+        const fromStr7 = formatLocalDate(sevenDaysAgo)
 
-        // Gọi đồng thời các API Dashboard
-        const [summaryRes, bestSellersRes, revenueRes] = await Promise.all([
+        // Một API thống kê lỗi không làm mất toàn bộ dữ liệu của các API còn lại.
+        const [summaryResult, bestSellersResult, revenueResult] = await Promise.allSettled([
           dashboardApi.getSummary(),
           dashboardApi.getBestSellers(fromStr30, toStr, 5),
           dashboardApi.getRevenueDaily(fromStr7, toStr)
         ])
 
-        if (summaryRes && summaryRes.data) {
-          setSummary(summaryRes.data)
+        if (summaryResult.status === 'fulfilled' && summaryResult.value?.data) {
+          setSummary(summaryResult.value.data)
         }
-        if (bestSellersRes && bestSellersRes.data) {
-          setBestSellers(bestSellersRes.data)
+        if (bestSellersResult.status === 'fulfilled' && bestSellersResult.value?.data) {
+          setBestSellers(bestSellersResult.value.data)
         }
-        if (revenueRes && revenueRes.data) {
-          setRevenueDaily(revenueRes.data)
+        if (revenueResult.status === 'fulfilled' && revenueResult.value?.data) {
+          setRevenueDaily(revenueResult.value.data)
+        }
+
+        const failedResults = [summaryResult, bestSellersResult, revenueResult]
+          .filter(result => result.status === 'rejected')
+        if (failedResults.length === 3) {
+          throw failedResults[0].reason
+        }
+        if (failedResults.length > 0) {
+          console.warn('Some dashboard APIs failed:', failedResults.map(result => result.reason))
         }
       } catch (err) {
         console.error('Error fetching dashboard data:', err)
@@ -72,7 +88,7 @@ export const AdminDashboard = () => {
   // Tính toán vẽ SVG chart cho Doanh thu 7 ngày
   const getChartPoints = () => {
     if (revenueDaily.length === 0) return ''
-    const maxVal = Math.max(...revenueDaily.map(d => d.revenue), 100000)
+    const maxVal = Math.max(...revenueDaily.map(d => Number(d.revenue) || 0), 100000)
     const width = 600
     const height = 150
     const padding = 20
@@ -80,8 +96,10 @@ export const AdminDashboard = () => {
     const usableHeight = height - padding * 2
 
     return revenueDaily.map((d, index) => {
-      const x = padding + (index / (revenueDaily.length - 1)) * usableWidth
-      const y = height - padding - (d.revenue / maxVal) * usableHeight
+      const x = revenueDaily.length === 1
+        ? width / 2
+        : padding + (index / (revenueDaily.length - 1)) * usableWidth
+      const y = height - padding - ((Number(d.revenue) || 0) / maxVal) * usableHeight
       return `${x},${y}`
     }).join(' ')
   }
@@ -206,9 +224,11 @@ export const AdminDashboard = () => {
                   
                   {/* Dots on line */}
                   {revenueDaily.map((d, index) => {
-                    const maxVal = Math.max(...revenueDaily.map(item => item.revenue), 100000)
-                    const x = 20 + (index / (revenueDaily.length - 1)) * 560
-                    const y = 150 - 20 - (d.revenue / maxVal) * 110
+                    const maxVal = Math.max(...revenueDaily.map(item => Number(item.revenue) || 0), 100000)
+                    const x = revenueDaily.length === 1
+                      ? 300
+                      : 20 + (index / (revenueDaily.length - 1)) * 560
+                    const y = 150 - 20 - ((Number(d.revenue) || 0) / maxVal) * 110
                     return (
                       <g key={d.period} className="group/dot cursor-pointer">
                         <circle

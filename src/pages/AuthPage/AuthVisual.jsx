@@ -230,7 +230,7 @@ export const AuthVisual = () => {
       <div className="relative z-10 text-center px-12">
         {/* Logo */}
         <h1 className="visual-logo font-display text-8xl font-bold text-white mb-10 tracking-tight">
-          Pee<span className="text-brand-blush">!</span>
+          OUTTA
         </h1>
 
         {/* Tagline */}

@@ -36,7 +36,7 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
       sessionStorage.removeItem('appliedPromoCode')
 
       // Xóa giỏ hàng của tài khoản cũ khi đăng xuất
-      localStorage.removeItem('pee_cart_items')
+      localStorage.removeItem('outta_cart_items')
       
       // Xóa đường dẫn điều hướng tạm thời để tránh việc đăng nhập lại bằng tài khoản khác bị nhảy vào link cũ
       sessionStorage.removeItem('authRedirectUrl')

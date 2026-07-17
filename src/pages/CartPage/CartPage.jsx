@@ -33,17 +33,11 @@ export const CartPage = () => {
     if (appliedPromo) {
       const fetchCoupon = async () => {
         try {
-          const res = await couponApi.getCoupons({ page: 0, size: 100 })
-          if (res && res.data && res.data.content) {
-            const found = res.data.content.find(
-              c => c.couponCode.toLowerCase().trim() === appliedPromo.toLowerCase().trim()
-            )
-            if (found) {
-              setDbCoupon(found)
-            }
-          }
+          const found = await couponApi.findCouponByCode(appliedPromo)
+          setDbCoupon(found)
         } catch (err) {
           console.error('Error fetching coupon info from DB:', err)
+          setDbCoupon(null)
         }
       }
       fetchCoupon()
@@ -186,25 +180,18 @@ export const CartPage = () => {
     }
     try {
       setPromoLoading(true)
-      const res = await couponApi.getCoupons({ page: 0, size: 100 })
-      if (res && res.data && res.data.content) {
-        const found = res.data.content.find(
-          c => c.couponCode.toLowerCase().trim() === promoInput.toLowerCase().trim()
-        )
-        if (found && isCouponUsable(found)) {
-          if (selectedTotal >= found.minimumOrderAmount) {
-            sessionStorage.setItem('appliedPromoCode', found.couponCode)
-            setDbCoupon(found)
-            toast.success(`Áp dụng thành công mã giảm giá: ${found.couponCode}!`)
-            setPromoInput('')
-          } else {
-            toast.error(`Đơn hàng chưa đạt giá trị tối thiểu ${formatVND(found.minimumOrderAmount)} để áp dụng mã này!`)
-          }
+      const found = await couponApi.findCouponByCode(promoInput)
+      if (found && isCouponUsable(found)) {
+        if (selectedTotal >= found.minimumOrderAmount) {
+          sessionStorage.setItem('appliedPromoCode', found.couponCode)
+          setDbCoupon(found)
+          toast.success(`Áp dụng thành công mã giảm giá: ${found.couponCode}!`)
+          setPromoInput('')
         } else {
-          toast.error('Mã giảm giá không tồn tại hoặc đã hết hạn!')
+          toast.error(`Đơn hàng chưa đạt giá trị tối thiểu ${formatVND(found.minimumOrderAmount)} để áp dụng mã này!`)
         }
       } else {
-        toast.error('Không thể kiểm tra mã giảm giá lúc này.')
+        toast.error('Mã giảm giá không tồn tại hoặc đã hết hạn!')
       }
     } catch (err) {
       console.error('Error applying coupon:', err)
@@ -238,7 +225,7 @@ export const CartPage = () => {
   const estimatedTotal = estimatedSubtotal + Number(shippingQuote?.shippingFee || 0)
 
   useEffect(() => {
-    if (!hasCartItems || !form.address || !form.province) {
+    if (!hasCartItems || !form.address || !form.province || !form.district || !form.ward) {
       setShippingQuote(null)
       setShippingFeeError('')
       return undefined

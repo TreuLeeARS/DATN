@@ -25,16 +25,21 @@ export const PaymentResultPage = () => {
       }
 
       try {
+        let receivedPayment = false
         for (let attempt = 0; attempt < 5; attempt += 1) {
           const res = await paymentApi.getPaymentStatusByOrderId(paymentReference)
           if (cancelled) return
 
           if (res?.data) {
+            receivedPayment = true
             setPayment(res.data)
             if (res.data.paymentStatus !== 'PENDING') break
           }
 
           if (attempt < 4) await wait(1500)
+        }
+        if (!receivedPayment && !cancelled) {
+          setError('Máy chủ không trả về dữ liệu thanh toán để đối chiếu.')
         }
       } catch (requestError) {
         if (!cancelled) {

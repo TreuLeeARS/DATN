@@ -5,7 +5,7 @@ import productApi from '../api/productApi'
 import { getIsLoggedIn } from '../utils/auth'
 import { mapColor } from '../utils/productMapper'
 
-const CART_STORAGE_KEY = 'pee_cart_items'
+const CART_STORAGE_KEY = 'outta_cart_items'
 const MAX_ITEM_QUANTITY = 99
 
 /**
@@ -60,6 +60,10 @@ export const useCart = () => {
       }
     } catch (err) {
       console.error('Lỗi khi lấy giỏ hàng từ backend:', err)
+      toast.error(
+        err.response?.data?.message || 'Không thể đồng bộ giỏ hàng với máy chủ.',
+        { id: 'cart-sync-error' }
+      )
     } finally {
       setLoading(false)
     }
@@ -232,10 +236,12 @@ export const useCart = () => {
             }, 600)
           }
         }).catch(error => {
+          sessionStorage.removeItem('pendingPurchase')
           console.error('Không thể khôi phục sản phẩm mua dở:', error)
           toast.error(error.message || 'Không thể thêm sản phẩm mua dở vào giỏ hàng.')
         })
       } catch (e) {
+        sessionStorage.removeItem('pendingPurchase')
         console.error('Lỗi khôi phục sản phẩm mua dở:', e)
       }
     }

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { SocialLogin } from './SocialLogin.jsx'
 import authApi from '../../api/authApi'
 
 // ─── SVG Icons ───
@@ -61,7 +60,12 @@ export const LoginForm = ({ onSwitchTab, onForgotPassword }) => {
     setIsResending(true)
     setResendStatus('')
     try {
-      await authApi.resendActivation(unverifiedEmail)
+      const response = await authApi.resendActivation(unverifiedEmail)
+      if (response?.success === false) {
+        setResendStatus('error')
+        toast.error(response.message || 'Gửi lại email kích hoạt thất bại. Vui lòng thử lại!')
+        return
+      }
       setResendStatus('success')
       toast.success('Gửi lại email kích hoạt thành công! Vui lòng kiểm tra hộp thư của bạn.')
     } catch (err) {
@@ -287,18 +291,6 @@ export const LoginForm = ({ onSwitchTab, onForgotPassword }) => {
             'Đăng Nhập'
           )}
         </button>
-      </div>
-
-      {/* ─── Divider ─── */}
-      <div className="auth-form-field flex items-center gap-4 my-8">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-sm text-brand-muted font-medium">hoặc</span>
-        <div className="flex-1 h-px bg-gray-200" />
-      </div>
-
-      {/* ─── Social Login ─── */}
-      <div className="auth-form-field">
-        <SocialLogin />
       </div>
 
       {/* ─── Switch to Register ─── */}

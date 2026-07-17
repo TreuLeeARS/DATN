@@ -1,4 +1,4 @@
-# Quick Start Guide - Pee! Landing Page
+# Quick Start Guide — OUTTA
 
 ## ⚡ 30 Second Setup
 
@@ -128,7 +128,7 @@ colors: {
 Edit `src/data/products.js`:
 ```js
 {
-  id: 'pee-XXX',
+  id: 'outta-XXX',
   name: 'Product Name',
   price: 650000,
   images: ['url1', 'url2'],

@@ -139,7 +139,7 @@ export const AdminLayout = () => {
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('username')
-      localStorage.removeItem('pee_cart_items')
+      localStorage.removeItem('outta_cart_items')
       sessionStorage.removeItem('authRedirectUrl')
       navigate('/')
       window.location.reload()
@@ -314,8 +314,8 @@ export const AdminLayout = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Top Header Bar */}
-        <header className="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-6 sm:px-10 shrink-0">
-          <div className="flex items-center space-x-4">
+        <header className="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-4 sm:px-10 shrink-0">
+          <div className="flex min-w-0 flex-1 items-center space-x-4">
             {/* Mobile Menu Open Trigger */}
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
@@ -327,8 +327,11 @@ export const AdminLayout = () => {
             </button>
 
             {/* Breadcrumb / Title */}
-            <div>
-              <h1 className="text-lg sm:text-xl font-semibold text-brand-charcoal tracking-wide">
+            <div className="min-w-0">
+              <h1
+                className="truncate text-lg font-semibold tracking-wide text-brand-charcoal sm:text-xl"
+                title={getPageTitle()}
+              >
                 {getPageTitle()}
               </h1>
               <div className="hidden sm:flex items-center space-x-2 text-xs text-brand-muted mt-0.5">
@@ -347,7 +350,7 @@ export const AdminLayout = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="ml-3 flex shrink-0 items-center space-x-4">
             <div className="w-8 h-8 rounded-full bg-brand-charcoal text-white flex items-center justify-center font-semibold text-xs border border-gray-100">
               A
             </div>

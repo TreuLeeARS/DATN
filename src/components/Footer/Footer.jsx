@@ -1,16 +1,17 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { NewsletterForm } from './NewsletterForm.jsx'
 import { SocialLinks } from './SocialLinks.jsx'
 import { footerLinks, socialLinks } from '../../data/navLinks.js'
 import { duration, ease } from '../../utils/gsapDefaults.js'
+import { LegalDocumentModal } from '../../pages/AuthPage/LegalDocumentModal.jsx'
 
 gsap.registerPlugin(ScrollTrigger)
 
 export const Footer = () => {
   const footerRef = useRef(null)
+  const [legalDocument, setLegalDocument] = useState(null)
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -38,7 +39,7 @@ export const Footer = () => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div id="about" className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-          {/* Brand + Newsletter Column */}
+          {/* Brand Column */}
           <div className="space-y-8">
             <div>
               <h3 className="text-2xl font-display font-bold text-white mb-4">
@@ -53,12 +54,9 @@ export const Footer = () => {
               </div>
             </div>
 
-            <div className="pt-4">
-              <h4 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">
-                Bản Tin
-              </h4>
-              <NewsletterForm />
-            </div>
+            <p className="text-xs leading-relaxed text-gray-500">
+              Các chương trình nhận tin qua email sẽ được hiển thị khi hệ thống hỗ trợ đăng ký chính thức.
+            </p>
           </div>
 
           {/* Link Columns */}
@@ -100,19 +98,22 @@ export const Footer = () => {
 
             {/* Legal Links */}
             <div className="flex gap-6 text-xs text-gray-400 md:justify-end">
-              <a href="#" className="hover:text-brand-blush transition-colors">
+              <button type="button" onClick={() => setLegalDocument('privacy')} className="hover:text-brand-blush transition-colors">
                 Chính Sách Bảo Mật
-              </a>
-              <a href="#" className="hover:text-brand-blush transition-colors">
+              </button>
+              <button type="button" onClick={() => setLegalDocument('terms')} className="hover:text-brand-blush transition-colors">
                 Điều Khoản Dịch Vụ
-              </a>
-              <a href="#" className="hover:text-brand-blush transition-colors">
-                Vận Chuyển & Đổi Trả
-              </a>
+              </button>
             </div>
           </div>
         </div>
       </div>
+      {legalDocument && (
+        <LegalDocumentModal
+          documentType={legalDocument}
+          onClose={() => setLegalDocument(null)}
+        />
+      )}
     </footer>
   )
 }

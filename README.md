@@ -1,4 +1,4 @@
-﻿# Pee! Women's Clothing Brand Landing Page
+﻿# OUTTA — E-commerce Website & Admin Dashboard
 
 A fully responsive, modern landing page for a premium women's clothing brand built with **React**, **Tailwind CSS**, and **GSAP** animations.
 
@@ -103,4 +103,4 @@ Upload `dist` folder to Vercel, Netlify, or any static host.
 
 ---
 
-Built with React, Tailwind CSS, and GSAP for Pee! © 2024
+Built with React, Tailwind CSS, and GSAP for OUTTA.

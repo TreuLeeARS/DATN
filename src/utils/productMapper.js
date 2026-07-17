@@ -111,7 +111,7 @@ export const mapDbProduct = (dbProduct) => {
     colors,
     sizes,
     isAvailable: !dbProduct.deleted,
-    description: dbProduct.description || `Sản phẩm ${name} cao cấp mang phong cách thiết kế tối giản, chất liệu bền bỉ và phom dáng chuẩn mực.`,
+    description: dbProduct.description || '',
     variants
   };
 };

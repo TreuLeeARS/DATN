@@ -174,7 +174,7 @@ export const ResetPasswordPage = () => {
             </svg>
           </Link>
           <Link to="/" className="font-display text-2xl font-bold text-brand-charcoal">
-            Pee<span className="text-brand-blush">!</span>
+            OUTTA
           </Link>
           <div className="w-9" />
         </div>

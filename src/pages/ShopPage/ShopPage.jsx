@@ -11,6 +11,7 @@ import { showAuthToast } from '../../utils/authToast.jsx'
 import categoryApi from '../../api/categoryApi.js'
 import productApi from '../../api/productApi.js'
 import { mapDbProduct } from '../../utils/productMapper.js'
+import { fetchAllPagedContent } from '../../utils/pagination.js'
 
 // Nhãn danh mục tiếng Việt
 const categoryLabels = {
@@ -65,6 +66,7 @@ export const ShopPage = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [maxPrice, setMaxPrice] = useState(2000000)
+  const [priceCeiling, setPriceCeiling] = useState(2000000)
   const [sortBy, setSortBy] = useState('newest')
   const viewMode = 'grid'
 
@@ -85,13 +87,19 @@ export const ShopPage = () => {
     const fetchProducts = async () => {
       try {
         setIsLoadingProducts(true)
-        const response = await productApi.getAllProducts({ page: 0, size: 1000 })
-        if (response && response.data && response.data.content) {
-          const mapped = response.data.content.map(p => mapDbProduct(p)).filter(Boolean)
-          setDbProducts(mapped)
-        }
+        const products = await fetchAllPagedContent(
+          params => productApi.getAllProducts(params),
+          { sort: 'productId,desc' }
+        )
+        const mapped = products.map(p => mapDbProduct(p)).filter(Boolean)
+        const highestPrice = Math.max(...mapped.map(product => Number(product.price) || 0), 0)
+        const nextPriceCeiling = Math.max(2000000, Math.ceil(highestPrice / 100000) * 100000)
+        setDbProducts(mapped)
+        setPriceCeiling(nextPriceCeiling)
+        setMaxPrice(nextPriceCeiling)
       } catch (err) {
         console.error('Error fetching database products:', err)
+        toast.error('Không thể tải danh sách sản phẩm từ máy chủ.')
       } finally {
         setIsLoadingProducts(false)
       }
@@ -323,7 +331,7 @@ export const ShopPage = () => {
     setSearchVal('')
     setSearchQuery('')
     setSelectedCategory('all')
-    setMaxPrice(2000000)
+    setMaxPrice(priceCeiling)
     setSortBy('newest')
     setSearchParams({})
   }
@@ -470,20 +478,9 @@ export const ShopPage = () => {
                       );
                     })
                   ) : (
-                    // Fallback sang danh mục tĩnh nếu BE chưa có dữ liệu
-                    Object.keys(categoryLabels).filter(key => key !== 'all').map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`text-left text-sm py-1.5 px-3 rounded-lg transition-all font-medium ${
-                          selectedCategory === cat
-                            ? 'bg-brand-charcoal text-white font-semibold'
-                            : 'text-brand-charcoal hover:bg-brand-cream'
-                        }`}
-                      >
-                        {categoryLabels[cat]}
-                      </button>
-                    ))
+                    <p className="px-3 py-2 text-xs text-brand-muted">
+                      Chưa có danh mục từ máy chủ.
+                    </p>
                   )}
                 </div>
               </div>
@@ -503,7 +500,7 @@ export const ShopPage = () => {
                 <input
                   type="range"
                   min="200000"
-                  max="2000000"
+                  max={priceCeiling}
                   step="50000"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(Number(e.target.value))}
@@ -511,7 +508,7 @@ export const ShopPage = () => {
                 />
                 <div className="flex justify-between text-[10px] text-brand-muted mt-1 font-semibold">
                   <span>200k</span>
-                  <span>2.0M</span>
+                  <span>{formatVND(priceCeiling)}</span>
                 </div>
               </div>
 

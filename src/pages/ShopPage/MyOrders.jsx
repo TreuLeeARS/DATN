@@ -9,6 +9,8 @@ import paymentApi from '../../api/paymentApi'
 import invoiceApi from '../../api/invoiceApi.js'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 import { parseShippingAddress } from '../../utils/shippingAddress.js'
+import { escapeHtml } from '../../utils/html.js'
+import { isPaymentNotFoundError } from '../../utils/payment.js'
 
 
 export const MyOrders = () => {
@@ -56,14 +58,18 @@ export const MyOrders = () => {
   const fetchOrderPaymentStatus = async (orderId) => {
     try {
       const res = await paymentApi.getPaymentStatusByOrderId(orderId)
-      if (res?.data) {
-        setPaymentDetails(prev => ({
-          ...prev,
-          [orderId]: res.data
-        }))
-      }
+      setPaymentDetails(prev => ({
+        ...prev,
+        [orderId]: res?.data || null
+      }))
     } catch (error) {
       console.error(`Error loading payment status for order #${orderId}:`, error)
+      setPaymentDetails(prev => ({
+        ...prev,
+        [orderId]: isPaymentNotFoundError(error)
+          ? { paymentStatus: 'NOT_CREATED' }
+          : undefined
+      }))
     }
   }
 
@@ -147,8 +153,8 @@ export const MyOrders = () => {
         <tr>
           <td style="text-align: center; border-bottom: 1px solid #eee; padding: 8px;">${idx + 1}</td>
           <td style="border-bottom: 1px solid #eee; padding: 8px;">
-            <div style="font-weight: 600;">${item.productName || 'Sản phẩm'}</div>
-            ${attrs ? `<div style="font-size: 11px; color: #666; margin-top: 2px;">${attrs}</div>` : ''}
+            <div style="font-weight: 600;">${escapeHtml(item.productName || 'Sản phẩm')}</div>
+            ${attrs ? `<div style="font-size: 11px; color: #666; margin-top: 2px;">${escapeHtml(attrs)}</div>` : ''}
           </td>
           <td style="text-align: center; border-bottom: 1px solid #eee; padding: 8px;">${item.quantity || 0}</td>
           <td style="text-align: right; border-bottom: 1px solid #eee; padding: 8px;">${formatVND(item.unitPrice || 0)}</td>
@@ -162,7 +168,7 @@ export const MyOrders = () => {
       <html>
         <head>
           <meta charset="utf-8">
-          <title>Hóa đơn #${invoice.id}</title>
+          <title>Hóa đơn #${escapeHtml(invoice.id)}</title>
           <style>
             body {
               font-family: 'Segoe UI', Roboto, Arial, sans-serif;
@@ -271,14 +277,14 @@ export const MyOrders = () => {
                 <td>
                   <h1 class="title">OUTTA STORE 💜</h1>
                   <div class="shop-info">
-                    <strong>Đơn vị bán hàng:</strong> Bee Store E-Commerce<br>
+                    <strong>Đơn vị bán hàng:</strong> OUTTA E-Commerce<br>
                     <strong>Địa chỉ:</strong> 123 Đường Cầu Giấy, Hà Nội
                   </div>
                 </td>
                 <td class="invoice-details">
                   <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">HÓA ĐƠN BÁN HÀNG</div>
-                  <strong>Mã hóa đơn:</strong> #${invoice.id}<br>
-                  <strong>Ngày xuất:</strong> ${dateStr}
+                  <strong>Mã hóa đơn:</strong> #${escapeHtml(invoice.id)}<br>
+                  <strong>Ngày xuất:</strong> ${escapeHtml(dateStr)}
                 </td>
               </tr>
             </table>
@@ -287,13 +293,13 @@ export const MyOrders = () => {
             <table class="info-grid">
               <tr>
                 <td>
-                  <strong>Khách hàng:</strong> ${customerName}<br>
-                  <strong>Điện thoại:</strong> ${customerPhone}<br>
-                  <strong>Email:</strong> ${customerEmail}
+                  <strong>Khách hàng:</strong> ${escapeHtml(customerName)}<br>
+                  <strong>Điện thoại:</strong> ${escapeHtml(customerPhone)}<br>
+                  <strong>Email:</strong> ${escapeHtml(customerEmail)}
                 </td>
                 <td>
                   <strong>Địa chỉ nhận hàng:</strong><br>
-                  ${shippingAddress.replace(/\n/g, '<br>')}
+                  ${escapeHtml(shippingAddress).replace(/\n/g, '<br>')}
                 </td>
               </tr>
             </table>
@@ -302,12 +308,12 @@ export const MyOrders = () => {
             <table class="info-grid" style="margin-bottom: 20px;">
               <tr>
                 <td>
-                  <strong>Phương thức:</strong> ${paymentInfo?.paymentMethod || 'Không có dữ liệu từ BE'}<br>
-                  <strong>Trạng thái:</strong> ${paymentInfo?.paymentStatus || 'Không có dữ liệu từ BE'}
+                  <strong>Phương thức:</strong> ${escapeHtml(paymentInfo?.paymentMethod || 'Không có dữ liệu từ BE')}<br>
+                  <strong>Trạng thái:</strong> ${escapeHtml(paymentInfo?.paymentStatus || 'Không có dữ liệu từ BE')}
                 </td>
                 <td>
-                  <strong>Mã thanh toán:</strong> ${paymentInfo?.paymentId ?? 'Không có dữ liệu từ BE'}<br>
-                  <strong>Số tiền:</strong> ${paymentInfo?.amount != null ? formatVND(paymentInfo.amount) : 'Không có dữ liệu từ BE'}
+                  <strong>Mã thanh toán:</strong> ${escapeHtml(paymentInfo?.paymentId ?? 'Không có dữ liệu từ BE')}<br>
+                  <strong>Số tiền:</strong> ${escapeHtml(paymentInfo?.amount != null ? formatVND(paymentInfo.amount) : 'Không có dữ liệu từ BE')}
                 </td>
               </tr>
             </table>
@@ -335,7 +341,7 @@ export const MyOrders = () => {
 
             <div class="footer">
               Cảm ơn quý khách đã mua sắm tại OUTTA STORE!<br>
-              Hóa đơn điện tử tự động tạo lập từ Bee Store.
+              Hóa đơn điện tử tự động tạo lập từ OUTTA.
             </div>
           </div>
         </body>
@@ -456,6 +462,8 @@ export const MyOrders = () => {
                 const shipInfo = parseShippingAddress(o.shippingAddress)
                 const isExpanded = expandedOrderId === o.orderId
                 const paymentInfo = paymentDetails[o.orderId]
+                const paymentLoaded = Object.prototype.hasOwnProperty.call(paymentDetails, o.orderId)
+                  && paymentInfo !== undefined
                 const payStatus = paymentInfo?.paymentStatus
                 
                 return (
@@ -585,7 +593,7 @@ export const MyOrders = () => {
                               const matchingInvoice = myInvoices.find(inv => inv.order?.orderId === o.orderId)
                               return (
                                 <div className="flex gap-2">
-                                  {(o.status === 'CREATED' || o.status === 'CONFIRMED') && (
+                                  {paymentLoaded && payStatus !== 'SUCCESS' && (o.status === 'CREATED' || o.status === 'CONFIRMED') && (
                                     <button
                                       onClick={() => handleCancelMyOrder(o.orderId)}
                                       className="border border-red-500 text-red-500 text-[10px] font-semibold tracking-wider uppercase px-4 py-2 hover:bg-red-50 transition-colors rounded-none cursor-pointer"

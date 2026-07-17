@@ -1,4 +1,4 @@
-# BEE Store — Project Context
+# OUTTA — Project Context
 
 > Cập nhật gần nhất: 2026-07-17
 > Mục đích: đọc file này trước khi làm việc để không phải quét lại toàn bộ FE và BE.
@@ -82,7 +82,8 @@
 
 1. BE lưu chuỗi `shippingAddress` và ba field riêng `province`, `district`, `ward` trên order.
 2. FE dùng `formatShippingAddress`/`parseShippingAddress` tại `src/utils/shippingAddress.js` cho người nhận, số điện thoại và địa chỉ; đồng thời gửi ba cấp hành chính riêng đúng DTO.
-3. Khi chọn GPS, Nominatim được gọi với `addressdetails=1`; FE khớp dữ liệu có cấu trúc vào ba cấp Tỉnh/Quận/Phường của danh sách hành chính và giữ phần số nhà/tên đường riêng.
+3. Luồng GPS/Nominatim đang tạm tắt vì dữ liệu bản đồ và danh mục hành chính sau sáp nhập chưa đồng bộ, từng tạo địa chỉ ghép sai giữa hai tỉnh.
+4. Checkout hiện chỉ nhận địa chỉ nhập thủ công từ một nguồn: chọn đủ Tỉnh/Quận/Phường theo dropdown rồi nhập số nhà/tên đường. Chỉ khi đủ bốn phần FE mới gọi shipping-fee và cho phép checkout.
 
 ### Trạng thái đơn và COD
 
@@ -97,7 +98,7 @@
 2. Variant chứa size, color, SKU, giá và tồn kho.
 3. Public API loại sản phẩm soft-deleted; admin detail dùng endpoint riêng.
 4. Payload tạo mới phải gửi `variants`, không dùng cặp mảng `colors`/`sizes` để mong BE tự sinh.
-5. STAFF được gọi danh sách `/products/admin` nhưng không được gọi admin detail hoặc mutation; FE chỉ cho xem chi tiết sản phẩm đang hoạt động bằng public detail.
+5. STAFF không dùng endpoint quản trị product; FE gọi danh sách/detail public để tra cứu sản phẩm đang hoạt động. ADMIN mới dùng `/products/admin`, admin detail và các mutation.
 
 ## Sai lệch và lỗi đã biết
 
@@ -105,16 +106,17 @@
 
 | ID | Khu vực | Hiện trạng | Hướng xử lý |
 |---|---|---|---|
-| CRIT-04 | Payment security | API đọc payment và `POST /momo/create` chưa kiểm tra chủ sở hữu order | Blocker BE; FE không thể bảo vệ thay server |
 | CRIT-07 | Secret management | `application.yml` BE vẫn chứa credential/secret tích hợp trong source | Blocker BE; phải chuyển sang biến môi trường và thay các secret đã lộ |
 
 ### Mức cao/trung bình
 
 | ID | Khu vực | Hiện trạng |
 |---|---|---|
-| HIGH-10 | MoMo callback | `ipn-url` đang trỏ localhost; máy chủ MoMo không thể callback vào môi trường local nếu không dùng URL public/tunnel, payment có thể giữ `PENDING` |
+| HIGH-10 | MoMo payment | `createPayment` chưa chặn order đã có payment nên có thể tạo nhiều payment cho một order; repository khác lại giả định một payment/order. Khi IPN thành công, BE xác nhận order nhưng chưa tạo invoice như luồng COD |
+| MED-01 | Action log | Mới gắn annotation ở một số endpoint order; checkout của khách cũng bị ghi, còn xác nhận COD/category/popup và các thao tác STAFF khác chưa ghi. Description vẫn là literal và API chỉ nhận page/size, chưa lọc server theo username/action/date |
+| MED-13 | MoMo callback | `ipn-url` đã đổi sang URL ngrok public, không còn localhost; cần bảo đảm tunnel còn hoạt động và cấu hình theo từng môi trường, nếu không payment có thể giữ `PENDING` |
 | MED-02 | Popup/promo | Popup API chỉ dành ADMIN/STAFF nên storefront không hiển thị; cần endpoint public nếu muốn bật lại |
-| MED-03 | Coupon public | Danh sách coupon có thể chứa bản ghi soft-deleted; FE lọc trước khi áp dụng nhưng BE phải đảm bảo tại checkout |
+| MED-03 | Coupon public | `GET /coupons` dùng `findAll(pageable)` nên trả cả coupon soft-deleted cho storefront. Checkout đã chặn coupon deleted, nhưng API public vẫn lộ dữ liệu không còn hiệu lực và buộc FE tự lọc |
 | MED-04 | Register response | `CreateUserResponse` thiếu accessor rõ ràng; form FE đã bám validation request hiện tại |
 | MED-05 | Category | BE chưa ngăn chọn descendant làm parent, có thể tạo cycle |
 | MED-10 | Invoice DTO | Invoice chưa trả tách tạm tính, giảm giá, phí ship và ba cấp địa chỉ mới; FE chỉ có thể hiển thị tổng cuối cùng trong hóa đơn |
@@ -130,7 +132,7 @@
 | HIGH-03 | `addItem` truyền lỗi về caller và chỉ nhận đúng variant màu/size đã chọn; không toast thành công/chuyển trang khi API thất bại |
 | MED-01 | STAFF vào dashboard/category/product/order/invoice/user/popup; product chỉ tra cứu qua danh sách public và public detail, category chỉ ADMIN update/create/delete nhưng STAFF vẫn được restore đúng quyền hiện tại của BE; coupon/action-log ADMIN-only |
 | Action log/Order permission | Action Log đọc được raw `Page<ActionLog>` hiện tại và dự phòng `BaseResponse`; ADMIN/STAFF đều được hủy đơn `CREATED`/`CONFIRMED` theo service BE mới |
-| Shipping address/fee | Checkout gửi riêng Tỉnh/Quận/Phường, GPS đồng bộ đủ ba cấp và phí vận chuyển được lấy từ `/shipping-fee/calculate` thay vì FE tự gán |
+| Shipping address/fee | Checkout gửi riêng Tỉnh/Quận/Phường, chỉ đồng bộ khi người dùng chọn đủ dropdown và nhập địa chỉ chi tiết; phí vận chuyển lấy từ `/shipping-fee/calculate` thay vì FE tự gán. GPS tạm tắt do nguồn hành chính không đồng bộ |
 | MED-02 cũ | Gỡ popup/fallback coupon giả khỏi storefront |
 | MED-03 cũ | Coupon hiển thị và tính theo số tiền VND, không coi là phần trăm |
 | MED-04 cũ | Form yêu cầu đủ họ/tên và bám giới hạn DTO register |
@@ -140,13 +142,15 @@
 | MED-07/08 | Decode JWT base64url đúng; màu/size lấy từ variant thật, bỏ field trình bày tự suy diễn |
 | MED-09 | Xóa module chatbot mock, dữ liệu product/response tĩnh và các hook không còn được import; khu gợi ý sản phẩm tiếp tục lấy dữ liệu thật từ BE |
 | Auth refresh resilience | Interceptor phân biệt refresh token bị từ chối với lỗi tạm thời; dọn Bearer header khi hết phiên, đánh dấu retry cho cả request trong queue, giới hạn refresh 10 giây và chặn lặp nếu token mới vẫn 401; không tự logout khi mất mạng/BE 5xx/response sai contract; trang đăng nhập hiển thị flash message khi phiên thật sự hết hạn |
+| FE flow audit 2026-07-17 | Resend activation kiểm tra `success`; coupon tìm đủ mọi trang; pending purchase lỗi được dọn; phí ship chỉ gọi khi đủ ba cấp địa chỉ; thao tác confirm/cancel/COD bám order/payment state và khóa khi không đọc được payment; escape dữ liệu in hóa đơn; dashboard dùng ngày local, all-settled và xử lý biểu đồ một điểm; bỏ social/newsletter giả, link `#` và mô tả product tự suy diễn; danh sách product/order đọc đủ phân trang thay giới hạn 1000 |
+| Payment ownership | BE hiện đã gọi `ensureCanAccessOrder` cho đọc payment và tạo MoMo; lỗi CRIT-04 cũ đã được giải quyết ở source BE hiện tại |
 
 ## Chất lượng và kiểm tra
 
 | Kiểm tra gần nhất | Kết quả |
 |---|---|
 | ESLint toàn FE | 0 errors, 0 warnings tại 2026-07-17 (`npm.cmd run lint`) |
-| Vite production build | Thành công, 156 modules; còn cảnh báo main chunk khoảng 544 kB sau minify |
+| Vite production build | Thành công, 156 modules; còn cảnh báo main chunk khoảng 531 kB sau minify |
 | Interceptor runtime simulation | PASS: 3 request 401 đồng thời chỉ gọi refresh 1 lần và retry mỗi request 1 lần; token mới vẫn 401 không lặp refresh; lỗi refresh 500 giữ phiên và lần gọi sau phục hồi; login sai không xóa phiên cũ |
 | Smoke test với BE đang chạy | Product list/detail và category từng trả thành công; `/payment-methods` của BE version 2 trả 401 khi gọi không token, phù hợp vì checkout FE yêu cầu đăng nhập |
 | Automated tests | Chưa có bộ test đủ để xác nhận các luồng tích hợp FE–BE |
@@ -186,3 +190,12 @@ Khi sửa hoặc thêm tính năng, cập nhật tối thiểu:
 | 2026-07-17 | Auth refresh | Chỉ logout khi refresh token bị BE từ chối, trả HTTP 401/403 hoặc HTTP 400 kèm `success=false`; giữ phiên khi mất mạng, HTTP 5xx, HTTP 400 sai chuẩn hay response sai contract; bảo toàn single-flight queue, đường dẫn quay lại và hiển thị flash message giải thích khi phiên thật sự hết hạn; lint/build thành công. |
 | 2026-07-17 | Danh sách sản phẩm STAFF | Tách nguồn dữ liệu theo quyền: ADMIN tiếp tục gọi `/products/admin` để quản lý cả bản ghi xóa mềm, STAFF gọi `/products` và public detail đúng nghiệp vụ chỉ tra cứu; không sửa BE. |
 | 2026-07-17 | Audit refresh token | Sửa Bearer header bị lưu sau logout, đánh dấu retry cho request chờ, thêm timeout 10 giây cho `/auth/refresh`, chặn vòng refresh khi token mới vẫn 401 và không xóa phiên khi login sai; kiểm thử mô phỏng queue/transient failure/recovery đều pass; ghi nhận ràng buộc `User-Agent`/thu hồi đa thiết bị là blocker BE. |
+| 2026-07-17 | Audit flow toàn FE | Sửa auth/coupon/cart/shipping/order-payment/invoice/dashboard/pagination; gỡ social login, newsletter và link giả chưa có API; cập nhật điều khoản MoMo; lint sạch và production build 157 modules thành công; đối chiếu lại blocker BE mới nhất. |
+| 2026-07-17 | Đồng bộ GPS và dropdown | Map GPS theo kiểu all-or-nothing đủ Tỉnh/Quận/Phường, ưu tiên exact match toàn bộ candidate, chặn race giữa các lần map, khóa dropdown sau GPS và chỉ mở bằng thao tác chuyển sang nhập thủ công; lint/build thành công. |
+| 2026-07-17 | Tạm tắt GPS | Gỡ nút bản đồ, Nominatim/autocomplete và `AddressMapModal` do dữ liệu hành chính sau sáp nhập chưa đồng bộ; checkout dùng duy nhất dropdown ba cấp và ô số nhà/tên đường để tránh ghép sai địa chỉ. |
+| 2026-07-17 | Đồng bộ thương hiệu OUTTA | Đồng bộ tên thương hiệu trong auth, điều khoản, hóa đơn, hỗ trợ, local cart key và tài liệu FE thành OUTTA; giữ nguyên định danh kỹ thuật thuộc contract BE. |
+| 2026-07-17 | Responsive Admin | Chuyển các nhóm input quản trị từ hai cột sang một cột ở mobile, giữ hai cột từ `sm`; tiêu đề Admin có truncate và giảm padding mobile để không tràn thanh đầu trang. |
+| 2026-07-17 | Responsive product modal | Tách thanh CTA Thêm vào giỏ/Mua ngay ra khỏi vùng cuộn chi tiết; trên mobile nút luôn cố định ở đáy phần chi tiết sản phẩm sau gallery. |
+| 2026-07-17 | Product modal mobile height | Đặt chiều cao modal mobile rõ ràng, giới hạn gallery theo viewport và cấp phần còn lại cho chi tiết/CTA; tránh gallery làm cắt toàn bộ nút thao tác trên iPhone SE. |
+| 2026-07-17 | Responsive admin modal | Modal coupon và popup giới hạn chiều cao màn hình; nội dung form cuộn riêng còn nút Hủy/Tạo/Cập nhật luôn hiển thị ở footer. |
+| 2026-07-17 | Mobile account access | Thêm menu Tài khoản ngay trên header mobile, tương đương menu desktop: khách có Đăng nhập/Đăng ký; người đã đăng nhập có Lịch sử mua hàng/Quản trị/Đăng xuất, không phải mở menu điều hướng trước. |
