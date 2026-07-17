@@ -132,8 +132,12 @@ export const ProductManager = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      // Luôn dùng endpoint admin để không làm mất sản phẩm soft-deleted khi lọc.
-      const res = await productApi.getAllProductsForAdmin({
+      // ADMIN cần cả sản phẩm đã xóa mềm; STAFF chỉ có nghiệp vụ tra cứu nên
+      // dùng danh sách public, tránh phụ thuộc endpoint dữ liệu quản trị.
+      const listProducts = canManageProducts
+        ? productApi.getAllProductsForAdmin
+        : productApi.getAllProducts
+      const res = await listProducts({
         page: 0,
         size: 1000,
         sort: 'productId,desc'

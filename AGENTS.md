@@ -127,7 +127,7 @@
 | CRIT-01/02/03 | Checkout toàn giỏ, dùng đúng `CREATED`/`CANCELED`/`orderDate`; COD và MoMo bám flow thật, VNPAY chưa có flow vẫn bị khóa |
 | HIGH-01/02 | Bỏ upload file không tồn tại; create product gửi `variants`, update ảnh qua endpoint ảnh riêng |
 | HIGH-03 | `addItem` truyền lỗi về caller và chỉ nhận đúng variant màu/size đã chọn; không toast thành công/chuyển trang khi API thất bại |
-| MED-01 | STAFF vào dashboard/category/product/order/invoice/user/popup; product chỉ tra cứu, category chỉ ADMIN update/create/delete nhưng STAFF vẫn được restore đúng quyền hiện tại của BE; coupon/action-log ADMIN-only |
+| MED-01 | STAFF vào dashboard/category/product/order/invoice/user/popup; product chỉ tra cứu qua danh sách public và public detail, category chỉ ADMIN update/create/delete nhưng STAFF vẫn được restore đúng quyền hiện tại của BE; coupon/action-log ADMIN-only |
 | Action log/Order permission | Action Log đọc được raw `Page<ActionLog>` hiện tại và dự phòng `BaseResponse`; ADMIN/STAFF đều được hủy đơn `CREATED`/`CONFIRMED` theo service BE mới |
 | Shipping address/fee | Checkout gửi riêng Tỉnh/Quận/Phường, GPS đồng bộ đủ ba cấp và phí vận chuyển được lấy từ `/shipping-fee/calculate` thay vì FE tự gán |
 | MED-02 cũ | Gỡ popup/fallback coupon giả khỏi storefront |
@@ -182,3 +182,4 @@ Khi sửa hoặc thêm tính năng, cập nhật tối thiểu:
 | 2026-07-16 | Dọn source legacy | Xóa `AIStylingAssistant`, `useAIChat`, `useScrollTrigger`, dữ liệu `aiResponses`/`products` mock không còn nằm trong cây import; cập nhật tài liệu liên quan. |
 | 2026-07-16 | Dọn script tạm | Xóa toàn bộ `scratch/`, `debug_db.js` và các script `scratch_*` không thuộc runtime/build FE; loại bỏ các script có lệnh xóa dữ liệu để tránh chạy nhầm. |
 | 2026-07-17 | Auth refresh | Chỉ logout khi refresh token bị BE từ chối, trả HTTP 401/403 hoặc HTTP 400 kèm `success=false`; giữ phiên khi mất mạng, HTTP 5xx, HTTP 400 sai chuẩn hay response sai contract; bảo toàn single-flight queue, đường dẫn quay lại và hiển thị flash message giải thích khi phiên thật sự hết hạn; lint/build thành công. |
+| 2026-07-17 | Danh sách sản phẩm STAFF | Tách nguồn dữ liệu theo quyền: ADMIN tiếp tục gọi `/products/admin` để quản lý cả bản ghi xóa mềm, STAFF gọi `/products` và public detail đúng nghiệp vụ chỉ tra cứu; không sửa BE. |
