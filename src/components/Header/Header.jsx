@@ -6,6 +6,8 @@ import { AuthButtons } from './AuthButtons.jsx'
 import { cn } from '../../utils/cn.js'
 import categoryApi from '../../api/categoryApi.js'
 
+const MAX_VISIBLE_ROOT_CATEGORIES = 4
+
 export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -51,9 +53,7 @@ export const Header = () => {
 
                 return {
                   label: root.name,
-                  href: root.name.toLowerCase().normalize('NFC') === 'phụ kiện'
-                    ? `/shop?category=${encodeURIComponent(root.name)}`
-                    : '/shop',
+                  href: `/shop?category=${encodeURIComponent(root.name)}`,
                   sublinks: sortedSubs.map(sub => ({
                     label: sub.name,
                     href: `/shop?category=${encodeURIComponent(sub.name)}`
@@ -96,6 +96,24 @@ export const Header = () => {
     fetchHeaderCategories()
   }, [])
 
+  const homeLink = displayLinks.find((link) => link.href === '/')
+  const categoryLinks = displayLinks.filter((link) => link.href !== '/')
+  const featuredCategoryLinks = categoryLinks.slice(0, MAX_VISIBLE_ROOT_CATEGORIES)
+  const remainingCategoryLinks = categoryLinks.slice(MAX_VISIBLE_ROOT_CATEGORIES)
+  const desktopLinks = [
+    ...(homeLink ? [homeLink] : []),
+    ...featuredCategoryLinks,
+    ...(remainingCategoryLinks.length > 0
+      ? [{
+          label: 'Danh mục',
+          href: '/shop',
+          sublinks: remainingCategoryLinks,
+          isCategoryMenu: true,
+          isMenuIcon: true
+        }]
+      : [])
+  ]
+
   return (
     <>
       <header
@@ -116,7 +134,7 @@ export const Header = () => {
             </div>
 
             {/* Desktop Navigation */}
-            <NavLinks links={displayLinks} mobile={false} />
+            <NavLinks links={desktopLinks} mobile={false} />
 
             {/* Right Section */}
             <div className="flex items-center space-x-3 xl:space-x-5">
@@ -153,7 +171,7 @@ export const Header = () => {
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-2 hover:opacity-60 transition-opacity"
+                className="lg:hidden p-2 hover:opacity-60 transition-opacity"
                 aria-label="Open menu"
               >
                 <svg
