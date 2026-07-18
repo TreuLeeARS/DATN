@@ -216,6 +216,7 @@ export const UserManager = () => {
         try {
           await userApi.setAdmin({ username: user.username })
           toast.success(`Đã nâng cấp quyền ADMIN cho ${user.username} thành công!`)
+          setIsEditModalOpen(false)
           fetchUsers()
           fetchRolesCount()
         } catch (err) {
@@ -234,6 +235,7 @@ export const UserManager = () => {
         try {
           await userApi.setStaff({ username: user.username })
           toast.success(`Đã cấp quyền nhân viên STAFF cho ${user.username} thành công!`)
+          setIsEditModalOpen(false)
           fetchUsers()
           fetchRolesCount()
         } catch (err) {
@@ -241,6 +243,26 @@ export const UserManager = () => {
           toast.error(err.response?.data?.message || 'Lỗi xảy ra khi cấp quyền STAFF.')
         }
       }
+    )
+  }
+
+  const handleResetToUserRole = (user) => {
+    openConfirm(
+      'Đặt lại quyền USER',
+      `Xác nhận đưa tài khoản "${user.username}" về quyền USER (khách hàng thông thường)?`,
+      async () => {
+        try {
+          await userApi.updateUser(user.username, { role: 'USER' })
+          toast.success(`Đã đặt lại quyền USER cho ${user.username}.`)
+          setIsEditModalOpen(false)
+          fetchUsers()
+          fetchRolesCount()
+        } catch (err) {
+          console.error('Error resetting user role:', err)
+          toast.error(err.response?.data?.message || 'Lỗi xảy ra khi đặt lại quyền USER.')
+        }
+      },
+      true
     )
   }
 
@@ -260,6 +282,24 @@ export const UserManager = () => {
         }
       },
       true
+    )
+  }
+
+  const handleUnlockUser = (user) => {
+    openConfirm(
+      'Mở khóa tài khoản',
+      `Bạn có chắc chắn muốn mở khóa tài khoản "${user.username}"? Người dùng sẽ có thể đăng nhập trở lại.`,
+      async () => {
+        try {
+          await userApi.updateUser(user.username, { isActive: true })
+          toast.success(`Đã mở khóa tài khoản "${user.username}" thành công!`)
+          fetchUsers()
+          fetchRolesCount()
+        } catch (err) {
+          console.error('Error unlocking user:', err)
+          toast.error(err.response?.data?.message || 'Lỗi xảy ra khi mở khóa tài khoản.')
+        }
+      }
     )
   }
 
@@ -454,7 +494,6 @@ export const UserManager = () => {
               ) : (
                 users.map(u => {
                   const isLocked = u.isActive === false
-                  const isCustomer = !hasRole(u, 'ADMIN') && !hasRole(u, 'STAFF')
                   return (
                     <tr key={u.id || u.username} className="hover:bg-black/[0.01] transition-colors">
                       <td className="py-4 px-4">
@@ -503,52 +542,28 @@ export const UserManager = () => {
                         </button>
                         <span>|</span>
 
-                        {isCustomer && (
-                          <>
-                            <button
-                              onClick={() => handleAssignStaff(u)}
-                              className="text-[9.5px] uppercase tracking-wider font-semibold text-brand-muted hover:text-brand-charcoal hover:underline cursor-pointer"
-                              title="Gán vai trò Nhân viên"
-                            >
-                              +Staff
-                            </button>
-                            <span>|</span>
-                            <button
-                              onClick={() => handleAssignAdmin(u)}
-                              className="text-[9.5px] uppercase tracking-wider font-semibold text-brand-muted hover:text-brand-charcoal hover:underline cursor-pointer"
-                              title="Gán vai trò Quản trị viên"
-                            >
-                              +Admin
-                            </button>
-                            <span>|</span>
-                          </>
+                        {isLocked ? (
+                          <button
+                            onClick={() => handleUnlockUser(u)}
+                            className="text-[9.5px] uppercase tracking-wider font-semibold text-green-700 hover:text-green-900 hover:underline cursor-pointer"
+                            title="Mở khóa tài khoản"
+                          >
+                            Mở khóa
+                          </button>
+                        ) : (
+                          <button
+                            disabled={u.username === 'adminbee'}
+                            onClick={() => handleLockUser(u)}
+                            className={`text-[9.5px] uppercase tracking-wider font-semibold hover:underline cursor-pointer ${
+                              u.username === 'adminbee'
+                                ? 'text-gray-300 opacity-40 cursor-not-allowed hover:no-underline'
+                                : 'text-red-700 hover:text-red-900'
+                            }`}
+                            title={u.username === 'adminbee' ? 'Không thể khóa tài khoản gốc hệ thống' : 'Khóa tài khoản'}
+                          >
+                            Khóa
+                          </button>
                         )}
-
-                        {hasRole(u, 'STAFF') && !hasRole(u, 'ADMIN') && (
-                          <>
-                            <button
-                              onClick={() => handleAssignAdmin(u)}
-                              className="text-[9.5px] uppercase tracking-wider font-semibold text-brand-muted hover:text-brand-charcoal hover:underline cursor-pointer"
-                              title="Nâng lên vai trò Quản trị viên"
-                            >
-                              +Admin
-                            </button>
-                            <span>|</span>
-                          </>
-                        )}
-
-                        <button
-                          disabled={isLocked || u.username === 'adminbee'}
-                          onClick={() => handleLockUser(u)}
-                          className={`text-[9.5px] uppercase tracking-wider font-semibold hover:underline cursor-pointer ${
-                            isLocked || u.username === 'adminbee'
-                              ? 'text-gray-300 opacity-40 cursor-not-allowed hover:no-underline'
-                              : 'text-red-700 hover:text-red-900'
-                          }`}
-                          title={u.username === 'adminbee' ? 'Không thể khóa tài khoản gốc hệ thống' : 'Khóa tài khoản'}
-                        >
-                          Khóa
-                        </button>
                           </>
                         )}
                       </td>
@@ -664,6 +679,49 @@ export const UserManager = () => {
                   <option value="true">Hoạt động (Active)</option>
                   <option value="false">Khóa tài khoản (Locked)</option>
                 </select>
+              </div>
+
+              <div className="border border-black/10 bg-gray-50 p-3 space-y-2">
+                <p className="font-semibold uppercase text-brand-muted text-[9.5px] tracking-wider">Phân quyền</p>
+                <p className="text-[10px] text-brand-muted">Mỗi tài khoản chỉ có một quyền: USER, STAFF hoặc ADMIN.</p>
+                <div className="flex flex-wrap gap-2">
+                  {!hasRole(editingUser, 'STAFF') && !hasRole(editingUser, 'ADMIN') && (
+                    <>
+                      <span className="flex items-center px-3 py-2 text-[10px] font-semibold text-brand-muted">Quyền hiện tại: USER</span>
+                      <button
+                        type="button"
+                        onClick={() => handleAssignStaff(editingUser)}
+                        className="border border-brand-charcoal px-3 py-2 text-[9.5px] font-semibold uppercase tracking-wider text-brand-charcoal hover:bg-brand-charcoal hover:text-white"
+                      >
+                        Cấp quyền STAFF
+                      </button>
+                    </>
+                  )}
+                  {!hasRole(editingUser, 'ADMIN') && (
+                    <button
+                      type="button"
+                      onClick={() => handleAssignAdmin(editingUser)}
+                      className="border border-brand-charcoal bg-brand-charcoal px-3 py-2 text-[9.5px] font-semibold uppercase tracking-wider text-white hover:opacity-80"
+                    >
+                      Cấp quyền ADMIN
+                    </button>
+                  )}
+                  {(hasRole(editingUser, 'STAFF') || hasRole(editingUser, 'ADMIN')) && (
+                    <button
+                      type="button"
+                      onClick={() => handleResetToUserRole(editingUser)}
+                      className="border border-amber-500 px-3 py-2 text-[9.5px] font-semibold uppercase tracking-wider text-amber-700 hover:bg-amber-50"
+                    >
+                      Đặt về USER
+                    </button>
+                  )}
+                  {hasRole(editingUser, 'ADMIN') && (
+                    <span className="flex items-center text-[10px] font-semibold text-brand-muted">Quyền hiện tại: ADMIN.</span>
+                  )}
+                  {hasRole(editingUser, 'STAFF') && !hasRole(editingUser, 'ADMIN') && (
+                    <span className="flex items-center text-[10px] font-semibold text-brand-muted">Quyền hiện tại: STAFF.</span>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">

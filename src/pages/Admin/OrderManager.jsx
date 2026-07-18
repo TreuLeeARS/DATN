@@ -8,7 +8,7 @@ import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 import { isAdminOrStaff } from '../../utils/auth.js'
 import { parseShippingAddress } from '../../utils/shippingAddress.js'
 import { fetchAllPagedContent } from '../../utils/pagination.js'
-import { isPaymentNotFoundError } from '../../utils/payment.js'
+import { getPaymentStatusLabel, isPaymentNotFoundError } from '../../utils/payment.js'
 
 export const OrderManager = () => {
   const canCancelOrders = isAdminOrStaff()
@@ -424,7 +424,7 @@ export const OrderManager = () => {
                       <p className="flex items-center gap-1.5">
                         <span className="font-semibold text-brand-muted">Trạng thái:</span>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getPaymentStatusBadgeClass(paymentInfo.status)}`}>
-                          {paymentInfo.status || 'Chưa có dữ liệu từ BE'}
+                          {getPaymentStatusLabel(paymentInfo.status, paymentInfo.paymentMethod)}
                         </span>
                       </p>
                       

@@ -15,6 +15,9 @@ export const InvoiceManager = () => {
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
+  const [invoiceIdQuery, setInvoiceIdQuery] = useState('')
+  const [isInvoiceSearchActive, setIsInvoiceSearchActive] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
 
   // Details Modal state
   const [selectedInvoice, setSelectedInvoice] = useState(null)
@@ -44,8 +47,57 @@ export const InvoiceManager = () => {
   }, [page])
 
   useEffect(() => {
+    if (!isInvoiceSearchActive) {
+      fetchInvoices()
+    }
+  }, [fetchInvoices, isInvoiceSearchActive])
+
+  const handleInvoiceSearch = async (event) => {
+    event.preventDefault()
+    const normalizedId = invoiceIdQuery.trim().replace(/^#/, '')
+
+    if (!normalizedId) {
+      setIsInvoiceSearchActive(false)
+      setPage(0)
+      fetchInvoices()
+      return
+    }
+
+    if (!/^\d+$/.test(normalizedId)) {
+      toast.error('Vui lòng nhập mã hóa đơn là số, ví dụ: 1.')
+      return
+    }
+
+    try {
+      setIsSearching(true)
+      const res = await invoiceApi.getInvoiceById(Number(normalizedId))
+      if (!res?.data) {
+        throw new Error('Invoice response is empty')
+      }
+
+      setInvoices([res.data])
+      setTotalElements(1)
+      setTotalPages(1)
+      setPage(0)
+      setIsInvoiceSearchActive(true)
+    } catch (error) {
+      console.error('Error searching invoice:', error)
+      setInvoices([])
+      setTotalElements(0)
+      setTotalPages(1)
+      setIsInvoiceSearchActive(true)
+      toast.error(`Không tìm thấy hóa đơn #${normalizedId}.`)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const handleClearInvoiceSearch = () => {
+    setInvoiceIdQuery('')
+    setIsInvoiceSearchActive(false)
+    setPage(0)
     fetchInvoices()
-  }, [fetchInvoices])
+  }
 
   const fetchPaymentDetails = async (orderId) => {
     if (!orderId) return null
@@ -362,9 +414,36 @@ export const InvoiceManager = () => {
             {userIsStaff ? 'Tra cứu hóa đơn (Invoices)' : 'Quản lý hóa đơn (Invoices)'}
           </h2>
           <p className="text-[10px] text-brand-muted tracking-wider uppercase mt-1">
-            Tổng số hóa đơn đã xuất: <span className="font-bold text-brand-charcoal">{totalElements}</span>
+            {isInvoiceSearchActive ? 'Kết quả tra cứu: ' : 'Tổng số hóa đơn đã xuất: '}
+            <span className="font-bold text-brand-charcoal">{totalElements}</span>
           </p>
         </div>
+        <form onSubmit={handleInvoiceSearch} className="flex w-full sm:w-auto gap-2">
+          <input
+            value={invoiceIdQuery}
+            onChange={(event) => setInvoiceIdQuery(event.target.value)}
+            inputMode="numeric"
+            placeholder="Nhập mã hóa đơn..."
+            aria-label="Tra cứu theo mã hóa đơn"
+            className="min-w-0 flex-1 sm:w-52 border border-black/15 px-3 py-2 text-xs outline-none focus:border-brand-charcoal"
+          />
+          <button
+            type="submit"
+            disabled={isSearching}
+            className="border border-brand-charcoal bg-brand-charcoal px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSearching ? 'Đang tìm...' : 'Tra cứu'}
+          </button>
+          {isInvoiceSearchActive && (
+            <button
+              type="button"
+              onClick={handleClearInvoiceSearch}
+              className="border border-black/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-charcoal hover:bg-gray-50"
+            >
+              Xóa
+            </button>
+          )}
+        </form>
       </div>
 
       {/* TABLE SECTION */}
