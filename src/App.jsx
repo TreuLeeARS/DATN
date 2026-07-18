@@ -15,6 +15,7 @@ import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { NotFoundPage } from './pages/NotFoundPage.jsx'
 import { AboutPage } from './pages/AboutPage/AboutPage.jsx'
 import { PaymentResultPage } from './pages/PaymentResultPage.jsx'
+import { ProfilePage } from './pages/ProfilePage.jsx'
 
 // Admin Panel Components & Pages (Lazy loaded for client performance)
 import { AdminProtectedRoute } from './components/AdminProtectedRoute.jsx'
@@ -124,6 +125,9 @@ function App() {
 
           {/* Customer Order History Page */}
           <Route path="/my-orders" element={<MyOrders />} />
+
+          {/* Personal profile uses the self-service user APIs from BE. */}
+          <Route path="/profile" element={<ProfilePage />} />
 
           {/* MoMo redirects here; the page verifies the result with BE */}
           <Route path="/payment-success" element={<PaymentResultPage />} />

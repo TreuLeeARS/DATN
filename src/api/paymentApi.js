@@ -8,9 +8,13 @@ const paymentApi = {
 
   // Tạo thanh toán COD
   createCodPayment: (data) => {
-    // data: { orderId, amount }
+    // data: { orderId } theo CreateCodPaymentRequest của BE; BE tự lấy totalAmount từ order.
     return axiosClient.post('/payments/cod', data);
   },
+
+  // Tạo phiên thanh toán MoMo cho một đơn CREATED chưa có payment.
+  // Response Momo hiện không bọc BaseResponse, chứa payUrl trực tiếp.
+  createMomoPayment: (orderId) => axiosClient.post('/momo/create', { orderId }),
 
   // ADMIN/STAFF: Xác nhận thanh toán COD
   confirmCodPayment: (paymentId) => {

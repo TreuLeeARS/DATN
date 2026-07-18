@@ -4,6 +4,7 @@ import { Header } from '../components/Header/Header.jsx'
 import { Footer } from '../components/Footer/Footer.jsx'
 import paymentApi from '../api/paymentApi.js'
 import { formatVND } from '../utils/price.js'
+import { getPaymentStatusLabel } from '../utils/payment.js'
 
 const wait = (delay) => new Promise(resolve => window.setTimeout(resolve, delay))
 
@@ -86,7 +87,7 @@ export const PaymentResultPage = () => {
               <p><span className="font-semibold text-brand-muted">Mã đơn hàng:</span> #{payment.orderId}</p>
               <p><span className="font-semibold text-brand-muted">Mã thanh toán:</span> {payment.paymentId}</p>
               <p><span className="font-semibold text-brand-muted">Phương thức:</span> {payment.paymentMethod}</p>
-              <p><span className="font-semibold text-brand-muted">Trạng thái:</span> {payment.paymentStatus}</p>
+              <p><span className="font-semibold text-brand-muted">Trạng thái:</span> {getPaymentStatusLabel(payment.paymentStatus, payment.paymentMethod)}</p>
               <p><span className="font-semibold text-brand-muted">Số tiền:</span> {formatVND(payment.amount)}</p>
             </div>
           ) : null}

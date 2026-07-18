@@ -6,6 +6,7 @@ import paymentApi from '../../api/paymentApi.js'
 import { parseShippingAddress } from '../../utils/shippingAddress.js'
 import { isStaff } from '../../utils/auth.js'
 import { escapeHtml } from '../../utils/html.js'
+import { getPaymentStatusLabel } from '../../utils/payment.js'
 
 export const InvoiceManager = () => {
   const userIsStaff = isStaff()
@@ -299,7 +300,7 @@ export const InvoiceManager = () => {
                 </td>
                 <td>
                   <span class="info-label">Trạng thái:</span><br>
-                  ${escapeHtml(paymentInfo?.paymentStatus || 'Không có dữ liệu từ BE')}
+                  ${escapeHtml(getPaymentStatusLabel(paymentInfo?.paymentStatus, paymentInfo?.paymentMethod))}
                 </td>
                 <td>
                   <span class="info-label">Mã thanh toán:</span><br>
@@ -537,7 +538,7 @@ export const InvoiceManager = () => {
                 </p>
                 <p>
                   <span className="font-semibold text-brand-muted">Trạng thái thanh toán:</span>{' '}
-                  {selectedPaymentInfo?.paymentStatus || 'Không có dữ liệu từ BE'}
+                  {getPaymentStatusLabel(selectedPaymentInfo?.paymentStatus, selectedPaymentInfo?.paymentMethod)}
                 </p>
                 <p>
                   <span className="font-semibold text-brand-muted">Mã thanh toán:</span>{' '}

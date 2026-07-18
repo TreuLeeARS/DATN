@@ -297,15 +297,16 @@ export const CartPage = () => {
         const selectedPaymentMethod = paymentMethods.find(method => method.code === form.paymentMethod)
         let paymentData = null
         let codPaymentCreated = true
+        let codPaymentErrorMessage = ''
         if (form.paymentMethod === 'COD') {
           try {
             const paymentRes = await paymentApi.createCodPayment({
-              orderId: orderData.orderId,
-              amount: orderData.totalAmount
+              orderId: orderData.orderId
             })
             paymentData = paymentRes?.data || null
           } catch (paymentError) {
             codPaymentCreated = false
+            codPaymentErrorMessage = paymentError.response?.data?.message || paymentError.message || 'Lỗi không xác định từ máy chủ.'
             console.error('Đơn đã tạo nhưng không thể khởi tạo thanh toán COD:', paymentError)
           }
         }
@@ -342,7 +343,7 @@ export const CartPage = () => {
           toast.success('Đặt đơn hàng COD thành công!')
         } else {
           setOrderSuccess(true)
-          toast.error(`Đơn #${orderData.orderId} đã được tạo nhưng thanh toán COD chưa khởi tạo. Vui lòng liên hệ hỗ trợ.`)
+          toast.error(`Đơn #${orderData.orderId} đã được tạo nhưng thanh toán COD chưa khởi tạo: ${codPaymentErrorMessage}`)
         }
       }
     } catch (err) {

@@ -80,6 +80,13 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
             </Link>
           )}
           <Link
+            to="/profile"
+            onClick={onCloseDrawer}
+            className="block px-2 py-1 text-xs tracking-[0.15em] font-medium text-brand-charcoal uppercase hover:opacity-60 transition-opacity"
+          >
+            Hồ sơ cá nhân
+          </Link>
+          <Link
             to="/my-orders"
             onClick={onCloseDrawer}
             className="block px-2 py-1 text-xs tracking-[0.15em] font-medium text-brand-charcoal uppercase hover:opacity-60 transition-opacity"
@@ -155,6 +162,12 @@ export const AuthButtons = ({ inDrawer = false, onCloseDrawer }) => {
               Quản trị
             </Link>
           )}
+          <Link
+            to="/profile"
+            className="block px-4 py-2 text-[10px] tracking-wider font-medium text-brand-charcoal hover:bg-black/[0.03] uppercase transition-colors"
+          >
+            Hồ sơ cá nhân
+          </Link>
           
           <Link
             to="/my-orders"

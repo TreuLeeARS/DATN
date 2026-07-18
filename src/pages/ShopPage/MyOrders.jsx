@@ -10,7 +10,7 @@ import invoiceApi from '../../api/invoiceApi.js'
 import { ConfirmModal } from '../../components/ConfirmModal.jsx'
 import { parseShippingAddress } from '../../utils/shippingAddress.js'
 import { escapeHtml } from '../../utils/html.js'
-import { isPaymentNotFoundError } from '../../utils/payment.js'
+import { getPaymentStatusLabel, isPaymentNotFoundError } from '../../utils/payment.js'
 
 
 export const MyOrders = () => {
@@ -22,6 +22,8 @@ export const MyOrders = () => {
   const [expandedOrderId, setExpandedOrderId] = useState(null)
   const [paymentDetails, setPaymentDetails] = useState({}) // orderId -> PaymentStatusResponse từ BE
   const [myInvoices, setMyInvoices] = useState([])
+  const [cancellingOrderId, setCancellingOrderId] = useState(null)
+  const [payingMomoOrderId, setPayingMomoOrderId] = useState(null)
 
 
   // Custom Confirmation Modal state
@@ -309,7 +311,7 @@ export const MyOrders = () => {
               <tr>
                 <td>
                   <strong>Phương thức:</strong> ${escapeHtml(paymentInfo?.paymentMethod || 'Không có dữ liệu từ BE')}<br>
-                  <strong>Trạng thái:</strong> ${escapeHtml(paymentInfo?.paymentStatus || 'Không có dữ liệu từ BE')}
+                  <strong>Trạng thái:</strong> ${escapeHtml(getPaymentStatusLabel(paymentInfo?.paymentStatus, paymentInfo?.paymentMethod))}
                 </td>
                 <td>
                   <strong>Mã thanh toán:</strong> ${escapeHtml(paymentInfo?.paymentId ?? 'Không có dữ liệu từ BE')}<br>
@@ -361,21 +363,42 @@ export const MyOrders = () => {
   const handleCancelMyOrder = (orderId) => {
     openConfirm(
       'Hủy đơn hàng',
-      'Bạn có chắc chắn muốn hủy đơn hàng này?',
+      'Bạn có chắc chắn muốn hủy đơn hàng này? Thao tác này không thể hoàn tác.',
       async () => {
         try {
+          setCancellingOrderId(orderId)
           const res = await orderApi.cancelOrder(orderId)
-          toast.success('Hủy đơn hàng thành công!')
+          toast.success(res?.message || 'Hủy đơn hàng thành công!')
           if (res?.data) {
             setOrders(prev => prev.map(order => order.orderId === orderId ? res.data : order))
           }
         } catch (err) {
           console.error('Error cancelling order:', err)
-          toast.error('Không thể hủy đơn hàng này. Vui lòng liên hệ hỗ trợ!')
+          toast.error(err.response?.data?.message || 'Không thể hủy đơn hàng này ở trạng thái hiện tại.')
+        } finally {
+          setCancellingOrderId(null)
         }
       },
       true
     )
+  }
+
+  const handlePayWithMomo = async (orderId) => {
+    try {
+      setPayingMomoOrderId(orderId)
+      const response = await paymentApi.createMomoPayment(orderId)
+      const payUrl = response?.payUrl
+
+      if (response?.resultCode !== 0 || !payUrl) {
+        throw new Error(response?.message || 'Máy chủ không trả về đường dẫn thanh toán MoMo.')
+      }
+
+      window.location.assign(payUrl)
+    } catch (error) {
+      console.error(`Không thể tạo thanh toán MoMo cho đơn #${orderId}:`, error)
+      toast.error(error.response?.data?.message || error.message || 'Không thể khởi tạo thanh toán MoMo.')
+      setPayingMomoOrderId(null)
+    }
   }
 
   const toggleExpandOrder = (orderId) => {
@@ -462,9 +485,8 @@ export const MyOrders = () => {
                 const shipInfo = parseShippingAddress(o.shippingAddress)
                 const isExpanded = expandedOrderId === o.orderId
                 const paymentInfo = paymentDetails[o.orderId]
-                const paymentLoaded = Object.prototype.hasOwnProperty.call(paymentDetails, o.orderId)
-                  && paymentInfo !== undefined
                 const payStatus = paymentInfo?.paymentStatus
+                const canCreateMomoPayment = o.status === 'CREATED' && payStatus === 'NOT_CREATED'
                 
                 return (
                   <div key={o.orderId} className="bg-white border border-black/10 shadow-sm overflow-hidden transition-all duration-300">
@@ -534,9 +556,9 @@ export const MyOrders = () => {
                               <p><span className="font-semibold text-brand-muted">Số tiền:</span> {formatVND(paymentInfo.amount)}</p>
                             )}
                             <p className="flex items-center gap-1.5">
-                              <span className="font-semibold text-brand-muted">Giao dịch:</span>
+                              <span className="font-semibold text-brand-muted">Trạng thái thanh toán:</span>
                               <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${getPaymentStatusColorClass(payStatus)}`}>
-                                {payStatus || 'Chưa có dữ liệu từ BE'}
+                                {getPaymentStatusLabel(payStatus, paymentInfo?.paymentMethod)}
                               </span>
                             </p>
                           </div>
@@ -593,12 +615,22 @@ export const MyOrders = () => {
                               const matchingInvoice = myInvoices.find(inv => inv.order?.orderId === o.orderId)
                               return (
                                 <div className="flex gap-2">
-                                  {paymentLoaded && payStatus !== 'SUCCESS' && (o.status === 'CREATED' || o.status === 'CONFIRMED') && (
+                                  {(o.status === 'CREATED' || o.status === 'CONFIRMED') && payStatus !== 'SUCCESS' && (
                                     <button
                                       onClick={() => handleCancelMyOrder(o.orderId)}
-                                      className="border border-red-500 text-red-500 text-[10px] font-semibold tracking-wider uppercase px-4 py-2 hover:bg-red-50 transition-colors rounded-none cursor-pointer"
+                                      disabled={cancellingOrderId === o.orderId}
+                                      className="border border-red-500 text-red-500 text-[10px] font-semibold tracking-wider uppercase px-4 py-2 hover:bg-red-50 transition-colors rounded-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                      Hủy đơn hàng
+                                      {cancellingOrderId === o.orderId ? 'Đang hủy...' : 'Hủy đơn hàng'}
+                                    </button>
+                                  )}
+                                  {canCreateMomoPayment && (
+                                    <button
+                                      onClick={() => handlePayWithMomo(o.orderId)}
+                                      disabled={payingMomoOrderId === o.orderId}
+                                      className="border border-brand-charcoal bg-brand-charcoal text-white text-[10px] font-semibold tracking-wider uppercase px-4 py-2 hover:bg-brand-dark transition-colors rounded-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {payingMomoOrderId === o.orderId ? 'Đang chuyển...' : 'Thanh toán MoMo'}
                                     </button>
                                   )}
                                   {matchingInvoice && (

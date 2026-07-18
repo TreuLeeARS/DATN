@@ -1,6 +1,12 @@
 import axiosClient from './axiosClient';
 
 const userApi = {
+  // Hồ sơ của chính người dùng. BE cho phép username trùng authentication.name.
+  getProfile: (username) => axiosClient.get(`/users/${encodeURIComponent(username)}`),
+
+  // Chỉ gửi các field cho phép trong ProfileUpdateRequest của BE.
+  updateProfile: (id, data) => axiosClient.patch(`/users/${id}`, data),
+
   // Lấy danh sách người dùng phân trang (Admin/Staff)
   getUsers: (params) => {
     // params: { page, size, sort }

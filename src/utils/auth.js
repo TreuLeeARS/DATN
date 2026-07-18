@@ -1,4 +1,4 @@
-const decodeJwtPayload = (token) => {
+export const decodeJwtPayload = (token) => {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
 
@@ -32,6 +32,20 @@ export const isAdmin = () => getRoles().some(
  * Dùng hàm này thay vì gán const để tránh stale closure.
  */
 export const getIsLoggedIn = () => !!localStorage.getItem('accessToken');
+
+// BE đặt UUID người dùng trong JWT ID standard claim (jti).
+// Profile API dùng UUID này cho PATCH /api/v1/users/{id}.
+export const getCurrentUserId = () => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return null;
+
+  try {
+    const payload = decodeJwtPayload(token);
+    return typeof payload?.jti === 'string' && payload.jti ? payload.jti : null;
+  } catch {
+    return null;
+  }
+};
 
 export const isStaff = () => {
   return getRoles().some(role => {

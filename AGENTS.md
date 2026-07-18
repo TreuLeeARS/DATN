@@ -76,7 +76,7 @@
 5. BE khóa tồn kho trong transaction, tạo order `CREATED`, trừ tồn kho, áp coupon, cộng phí vận chuyển và xóa toàn bộ cart.
 6. FE tải phương thức từ `/payment-methods`; chỉ bật COD và MOMO vì đây là hai phương thức có flow BE thực tế. VNPAY vẫn bị khóa.
 7. Với COD, FE gọi `/payments/cod`; BE chuyển order sang `CONFIRMED`.
-8. Với MOMO, checkout tự tạo payment và trả `payUrl`; FE redirect sang MoMo, nhận lại tại `/payment-success`, rồi gọi payment status để xác minh thay vì tin query redirect.
+8. Với MOMO, checkout tự tạo payment và trả `payUrl`; FE redirect sang MoMo, nhận lại tại `/payment-success`, rồi gọi payment status để xác minh thay vì tin query redirect. Với đơn `CREATED` chưa có bất kỳ payment nào, khách có thể khởi tạo MoMo từ lịch sử đơn qua `POST /momo/create`; FE không hiện nút nếu payment đã tồn tại để tránh tạo trùng.
 
 ### Địa chỉ giao hàng
 
@@ -90,7 +90,7 @@
 1. `CREATED` có thể xác nhận thành `CONFIRMED` hoặc hủy.
 2. `CONFIRMED` có thể chuyển `SHIPPING`, hủy, hoặc xác nhận đã thu COD.
 3. `SHIPPING` có thể chuyển `DELIVERED`; BE tự xác nhận COD pending khi đánh dấu đã giao.
-4. Chỉ `CREATED`/`CONFIRMED` được hiển thị thao tác hủy trên FE.
+4. Khách `USER` chỉ được hủy đơn của chính mình ở `CREATED`/`CONFIRMED`; ADMIN/STAFF có thể hủy theo quyền BE. Đơn có payment `SUCCESS`, `SHIPPING`, `DELIVERED` hoặc đã `CANCELED` không được hủy. FE hiển thị nút theo trạng thái đơn; BE là nơi kiểm tra cuối cùng payment/chủ sở hữu và hoàn tồn kho.
 
 ### Sản phẩm
 
@@ -113,6 +113,8 @@
 | ID | Khu vực | Hiện trạng |
 |---|---|---|
 | HIGH-10 | MoMo payment | `createPayment` chưa chặn order đã có payment nên có thể tạo nhiều payment cho một order; repository khác lại giả định một payment/order. Khi IPN thành công, BE xác nhận order nhưng chưa tạo invoice như luồng COD |
+| HIGH-11 | COD partial transaction | Checkout tạo order trước, FE mới gọi riêng `/payments/cod`. Nếu request COD lỗi, order/cart/tồn kho đã commit nhưng payment chưa tồn tại, tạo đơn dở dang; FE hiển thị lý do BE trả về và cho khách hủy đơn, nhưng BE nên tạo COD cùng transaction checkout hoặc có cơ chế retry an toàn. |
+| MED-14 | MoMo duplicate payment | `POST /momo/create` không kiểm tra payment có sẵn trước khi tạo mới. FE chỉ cho khởi tạo MoMo từ lịch sử đơn khi payment status là `NOT_CREATED`, nhưng BE vẫn cần chặn/idempotent endpoint để chống request song song hoặc client khác gọi lặp. |
 | MED-01 | Action log | Mới gắn annotation ở một số endpoint order; checkout của khách cũng bị ghi, còn xác nhận COD/category/popup và các thao tác STAFF khác chưa ghi. Description vẫn là literal và API chỉ nhận page/size, chưa lọc server theo username/action/date |
 | MED-13 | MoMo callback | `ipn-url` đã đổi sang URL ngrok public, không còn localhost; cần bảo đảm tunnel còn hoạt động và cấu hình theo từng môi trường, nếu không payment có thể giữ `PENDING` |
 | MED-02 | Popup/promo | Popup API chỉ dành ADMIN/STAFF nên storefront không hiển thị; cần endpoint public nếu muốn bật lại |
@@ -131,7 +133,7 @@
 | HIGH-01/02 | Bỏ upload file không tồn tại; create product gửi `variants`, update ảnh qua endpoint ảnh riêng |
 | HIGH-03 | `addItem` truyền lỗi về caller và chỉ nhận đúng variant màu/size đã chọn; không toast thành công/chuyển trang khi API thất bại |
 | MED-01 | STAFF vào dashboard/category/product/order/invoice/user/popup; product chỉ tra cứu qua danh sách public và public detail, category chỉ ADMIN update/create/delete nhưng STAFF vẫn được restore đúng quyền hiện tại của BE; coupon/action-log ADMIN-only |
-| Action log/Order permission | Action Log đọc được raw `Page<ActionLog>` hiện tại và dự phòng `BaseResponse`; ADMIN/STAFF đều được hủy đơn `CREATED`/`CONFIRMED` theo service BE mới |
+| Action log/Order permission | Action Log đọc được raw `Page<ActionLog>` hiện tại và dự phòng `BaseResponse`; USER được hủy đơn của chính mình, ADMIN/STAFF có thể hủy theo quyền service BE khi đơn `CREATED`/`CONFIRMED` và chưa thanh toán thành công |
 | Shipping address/fee | Checkout gửi riêng Tỉnh/Quận/Phường, chỉ đồng bộ khi người dùng chọn đủ dropdown và nhập địa chỉ chi tiết; phí vận chuyển lấy từ `/shipping-fee/calculate` thay vì FE tự gán. GPS tạm tắt do nguồn hành chính không đồng bộ |
 | MED-02 cũ | Gỡ popup/fallback coupon giả khỏi storefront |
 | MED-03 cũ | Coupon hiển thị và tính theo số tiền VND, không coi là phần trăm |
@@ -144,6 +146,7 @@
 | Auth refresh resilience | Interceptor phân biệt refresh token bị từ chối với lỗi tạm thời; dọn Bearer header khi hết phiên, đánh dấu retry cho cả request trong queue, giới hạn refresh 10 giây và chặn lặp nếu token mới vẫn 401; không tự logout khi mất mạng/BE 5xx/response sai contract; trang đăng nhập hiển thị flash message khi phiên thật sự hết hạn |
 | FE flow audit 2026-07-17 | Resend activation kiểm tra `success`; coupon tìm đủ mọi trang; pending purchase lỗi được dọn; phí ship chỉ gọi khi đủ ba cấp địa chỉ; thao tác confirm/cancel/COD bám order/payment state và khóa khi không đọc được payment; escape dữ liệu in hóa đơn; dashboard dùng ngày local, all-settled và xử lý biểu đồ một điểm; bỏ social/newsletter giả, link `#` và mô tả product tự suy diễn; danh sách product/order đọc đủ phân trang thay giới hạn 1000 |
 | Payment ownership | BE hiện đã gọi `ensureCanAccessOrder` cho đọc payment và tạo MoMo; lỗi CRIT-04 cũ đã được giải quyết ở source BE hiện tại |
+| Profile cá nhân | BE mới có `GET /users/{username}` và `PATCH /users/{id}` cho hồ sơ cá nhân; FE cần dùng UUID claim `jti` trong access token vì `LoadUserResponse` không trả id. API PATCH chỉ cho sửa `email`, `firstName`, `lastName`, `phone`; không sửa username, role hay password. **Blocker BE:** `SecurityConfig` đang để `PATCH /api/v1/users/*` rơi vào rule `/users/**` chỉ ADMIN/STAFF, làm USER nhận 403 trước khi service kiểm tra chủ sở hữu. |
 
 ## Chất lượng và kiểm tra
 
@@ -199,3 +202,9 @@ Khi sửa hoặc thêm tính năng, cập nhật tối thiểu:
 | 2026-07-17 | Product modal mobile height | Đặt chiều cao modal mobile rõ ràng, giới hạn gallery theo viewport và cấp phần còn lại cho chi tiết/CTA; tránh gallery làm cắt toàn bộ nút thao tác trên iPhone SE. |
 | 2026-07-17 | Responsive admin modal | Modal coupon và popup giới hạn chiều cao màn hình; nội dung form cuộn riêng còn nút Hủy/Tạo/Cập nhật luôn hiển thị ở footer. |
 | 2026-07-17 | Mobile account access | Thêm menu Tài khoản ngay trên header mobile, tương đương menu desktop: khách có Đăng nhập/Đăng ký; người đã đăng nhập có Lịch sử mua hàng/Quản trị/Đăng xuất, không phải mở menu điều hướng trước. |
+| 2026-07-17 | Hồ sơ cá nhân | Thêm `/profile`, API get/patch hồ sơ bám `ProfileUpdateRequest`; lấy UUID từ JWT `jti`, chỉ gửi field thay đổi và validation email/họ/tên/số điện thoại theo BE. Thêm lối vào Hồ sơ trong menu Tài khoản desktop/mobile. |
+| 2026-07-17 | Profile permission diagnosis | Xác định `PATCH /users/{id}` của USER bị SecurityConfig chặn 403 bởi rule tổng chỉ ADMIN/STAFF; FE chặn request tải hồ sơ lặp trong React StrictMode để không spam toast, nhưng cập nhật profile cần BE thêm rule PATCH authenticated trước rule tổng. |
+| 2026-07-18 | Khách hủy đơn | Đồng bộ nghiệp vụ hủy đơn BE mới: USER hủy đơn sở hữu ở `CREATED`/`CONFIRMED` nếu chưa thanh toán thành công; hiển thị nút không phụ thuộc request payment phụ, khóa khi đang gửi và render lỗi nghiệp vụ trực tiếp từ BE. |
+| 2026-07-18 | Chẩn đoán COD | Bỏ field `amount` dư khỏi request COD, hiển thị message lỗi thực từ BE khi payment tạo sau checkout thất bại; ghi nhận checkout/COD hiện là hai transaction tách rời, cần BE xử lý để tránh order dở dang. |
+| 2026-07-18 | Thanh toán MoMo từ lịch sử đơn | Thêm nút MoMo cho đơn `CREATED` được BE xác nhận chưa có payment; gọi `/momo/create`, kiểm tra `resultCode`/`payUrl` rồi redirect. Không hiển thị khi payment đã tồn tại để tránh tạo trùng do giới hạn endpoint BE hiện tại. |
+| 2026-07-18 | Việt hóa trạng thái payment | Thêm mapper trạng thái payment dùng chung cho storefront, kết quả MoMo và hóa đơn admin; không render trực tiếp enum kỹ thuật `PENDING`/`SUCCESS`/`FAILED`/`REFUNDED`. COD pending hiển thị đúng nghiệp vụ “Chờ thu tiền khi giao hàng”. |
